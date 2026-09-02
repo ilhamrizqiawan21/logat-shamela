@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>id.logat_syamilah.desktop</id>
+  <name>Logat Syamilah</name>
+  <summary>Pembaca kitab Maktabah Syamilah dengan arti per kata</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="id.logat_syamilah"><name>Ilham Rizqiawan</name></developer>
+  <url type="homepage">https://shamela.ws</url>
+  <description>
+    <p>Logat Syamilah membaca kitab yang sudah diunduh oleh Maktabah Syamilah 4 dan memungkinkan pengguna menyimpan arti manual pada setiap kata. Data asli Syamilah hanya dibaca.</p>
+  </description>
+  <launchable type="desktop-id">logat-syamilah.desktop</launchable>
+  <provides><binary>logat-syamilah</binary></provides>
+  <content_rating type="oars-1.1"/>
+  <releases><release version="0.2.2" date="2026-08-27"/></releases>
+</component>

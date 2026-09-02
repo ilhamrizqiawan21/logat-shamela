@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Logat Syamilah
+GenericName=Pembaca Maktabah Syamilah Berlogat
+Comment=Baca kitab Arab dan catat arti per kata
+Exec=logat-syamilah
+Icon=logat-syamilah
+Terminal=false
+Categories=Education;Literature;
+Keywords=Shamela;Syamilah;Arabic;Kitab;Logat;
+StartupNotify=true
+StartupWMClass=id.logat_syamilah.desktop

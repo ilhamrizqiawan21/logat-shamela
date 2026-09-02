@@ -1,0 +1,10 @@
+Package: logat-syamilah
+Version: 0.2.2
+Section: education
+Priority: optional
+Architecture: amd64
+Depends: python3 (>= 3.10), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1
+Maintainer: Ilham Rizqiawan
+Description: Pembaca Maktabah Syamilah dengan anotasi arti per kata
+ Membaca data Maktabah Syamilah 4 secara read-only dan menyimpan logat
+ pengguna dalam basis data terpisah.

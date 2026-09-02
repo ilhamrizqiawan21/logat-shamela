@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+export PYTHONPATH="/usr/lib/logat-syamilah"
+export LOGAT_SYAMILAH_RESOURCE_DIR="/usr/lib/logat-syamilah"
+exec python3 -m logat_syamilah "$@"
