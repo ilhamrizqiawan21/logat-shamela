@@ -243,11 +243,11 @@ class LogatStore:
 
     def toggle_bookmark(self, book_id: int, page_id: int) -> bool:
         with self.connect() as db:
-            exists = db.execute("SELECT 1 FROM bookmark WHERE book_id=? AND page_id=?", (book_id, page_id)).fetchone()
-            if exists:
-                db.execute("DELETE FROM bookmark WHERE book_id=? AND page_id=?", (book_id, page_id))
+            db.execute("BEGIN IMMEDIATE")
+            deleted = db.execute("DELETE FROM bookmark WHERE book_id=? AND page_id=?", (book_id, page_id)).rowcount
+            if deleted:
                 return False
-            db.execute("INSERT INTO bookmark(book_id,page_id) VALUES(?,?)", (book_id, page_id))
+            db.execute("INSERT OR IGNORE INTO bookmark(book_id,page_id) VALUES(?,?)", (book_id, page_id))
             return True
 
     def backup(self) -> Path:
@@ -309,8 +309,20 @@ class ShamelaReader:
         with sqlite3.connect(uri, uri=True) as db:
             return db.execute("SELECT COUNT(*) FROM page").fetchone()[0]
 
+    def page_exists(self, book_id: int, page_id: int) -> bool:
+        uri = f"file:{self.root / 'database/book' / str(book_id)[-3:] / (str(book_id)+'.db')}?mode=ro"
+        try:
+            with sqlite3.connect(uri, uri=True) as db:
+                return db.execute("SELECT 1 FROM page WHERE id=?", (page_id,)).fetchone() is not None
+        except sqlite3.Error:
+            return False
+
     def page(self, book_id: int, page_id: int):
-        data = self.request("get_pages_batch", {"book_id": book_id, "page_ids": [page_id]})["results"][0]
+        response = self.request("get_pages_batch", {"book_id": book_id, "page_ids": [page_id]})
+        results = response.get("results", [])
+        if not results:
+            raise LookupError("Halaman tidak ditemukan")
+        data = results[0]
         if not data.get("found"):
             raise LookupError("Halaman tidak ditemukan")
         uri = f"file:{self.root / 'database/book' / str(book_id)[-3:] / (str(book_id)+'.db')}?mode=ro"

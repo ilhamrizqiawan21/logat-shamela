@@ -15,9 +15,14 @@ type Props = {
   onPrefs: (prefs: ReaderPrefs) => void
   onResetReader: () => void
   onClearStorage: () => void
+  aiEnabled: boolean
+  aiProvider: string
+  aiModel: string
+  onToggleAI: (enabled: boolean) => void
+  onProvider: (provider: string) => void
 }
 
-export function SettingsPanel({ theme, prefs, favoriteCount, bookmarkCount, recentBooks, recentSearches, onTheme, onPrefs, onResetReader, onClearStorage }: Props) {
+export function SettingsPanel({ theme, prefs, favoriteCount, bookmarkCount, recentBooks, recentSearches, onTheme, onPrefs, onResetReader, onClearStorage, aiEnabled, aiProvider, aiModel, onToggleAI, onProvider }: Props) {
   return (
     <section className="settings-screen">
       <div className="section-heading">
@@ -35,9 +40,9 @@ export function SettingsPanel({ theme, prefs, favoriteCount, bookmarkCount, rece
 
         <section className="settings-card">
           <h2>Reader</h2>
-          <label>Ukuran <input type="range" min="24" max="44" value={prefs.fontSize} onChange={event => onPrefs({ ...prefs, fontSize: Number(event.target.value) })} /></label>
-          <label>Spasi <input type="range" min="1.8" max="2.7" step="0.05" value={prefs.lineHeight} onChange={event => onPrefs({ ...prefs, lineHeight: Number(event.target.value) })} /></label>
-          <label>Lebar <input type="range" min="720" max="1240" step="20" value={prefs.columnWidth} onChange={event => onPrefs({ ...prefs, columnWidth: Number(event.target.value) })} /></label>
+          <label><span>Ukuran <output>{prefs.fontSize}px</output></span><input aria-label="Ukuran huruf" type="range" min="24" max="44" value={prefs.fontSize} onChange={event => onPrefs({ ...prefs, fontSize: Number(event.target.value) })} /></label>
+          <label><span>Spasi <output>{prefs.lineHeight.toFixed(2)}</output></span><input aria-label="Jarak antarbaris" type="range" min="1.8" max="2.7" step="0.05" value={prefs.lineHeight} onChange={event => onPrefs({ ...prefs, lineHeight: Number(event.target.value) })} /></label>
+          <label><span>Lebar <output>{prefs.columnWidth}px</output></span><input aria-label="Lebar kolom bacaan" type="range" min="720" max="1240" step="20" value={prefs.columnWidth} onChange={event => onPrefs({ ...prefs, columnWidth: Number(event.target.value) })} /></label>
           <Button onClick={onResetReader}>Reset layout reader</Button>
         </section>
 
@@ -45,6 +50,12 @@ export function SettingsPanel({ theme, prefs, favoriteCount, bookmarkCount, rece
           <h2>Penyimpanan lokal</h2>
           <p>{favoriteCount} favorit · {bookmarkCount} bookmark · {recentBooks.length} terakhir dibaca · {recentSearches.length} pencarian terkini</p>
           <Button className="danger" onClick={onClearStorage}>Bersihkan preferensi UI</Button>
+        </section>
+        <section className="settings-card">
+          <h2>Asisten AI</h2>
+          <p>{aiProvider} · {aiModel}</p>
+          <label>Provider<select value={aiProvider} onChange={event => onProvider(event.target.value)}><option value="gemini">Gemini</option><option value="ollama">Ollama lokal</option></select></label>
+          <label className="ai-switch"><input type="checkbox" checked={aiEnabled} onChange={event => onToggleAI(event.target.checked)} /> <span>{aiEnabled ? 'AI aktif' : 'AI nonaktif'}</span></label>
         </section>
       </div>
     </section>

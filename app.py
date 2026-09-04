@@ -9,11 +9,11 @@ import webbrowser
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import uvicorn
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from ai_service import AIService, AIRateLimited, AIUnavailable
 
 from logat_syamilah.core import LogatStore, ShamelaReader, Token, discover_install_root, parse_and_tokenize, user_data_dir
 
@@ -40,6 +40,24 @@ class AnnotationInput(BaseModel):
 class BookmarkInput(BaseModel):
     book_id: int
     page_id: int
+
+
+class AIAnalysisInput(BaseModel):
+    book_id: int
+    page_id: int
+    mode: str
+    text: str
+    word: str = ""
+    context_before: str = ""
+    context_after: str = ""
+
+
+class AIToggleInput(BaseModel):
+    enabled: bool
+
+
+class AIProviderInput(BaseModel):
+    provider: str
 
 
 class ReaderService:
@@ -105,17 +123,31 @@ class ReaderService:
             item["authors"] = book["authors"] if book else ""
         return data
 
+    def search_advanced(self, terms: list[str], operator: str, book_ids: list[int], offset: int = 0):
+        terms = [term.strip() for term in terms if term.strip()]
+        if not terms: return {"query": "", "total_hits": 0, "results": []}
+        queries = [f"{term}~" if operator == "FUZZY" else term for term in terms]
+        responses = [self.search(query, book_ids, 0) for query in queries]
+        buckets = [{(item["book_id"], item["page_id"]): item for item in response.get("results", [])} for response in responses]
+        if operator == "AND": keys = set.intersection(*(set(bucket) for bucket in buckets))
+        elif operator == "NOT": keys = set(buckets[0]) - set().union(*(set(bucket) for bucket in buckets[1:]))
+        else: keys = set.union(*(set(bucket) for bucket in buckets))
+        results = [next(bucket[key] for bucket in buckets if key in bucket) for key in sorted(keys)]
+        return {"query": f" {operator} ".join(terms), "total_hits": len(results), "results": results[offset:offset + 100]}
 
-def create_app(service: ReaderService | None = None) -> FastAPI:
+
+def create_app(service: ReaderService | None = None, ai_service: AIService | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.service = service or ReaderService()
+        app.state.ai_service = ai_service or AIService()
         try: yield
         finally:
             if not service: app.state.service.close()
 
     api = FastAPI(title="Logat Syamilah", lifespan=lifespan)
     def svc() -> ReaderService: return api.state.service
+    def ai() -> AIService: return api.state.ai_service
 
     @api.get("/api/health")
     def health(): return {"ok": True}
@@ -139,7 +171,10 @@ def create_app(service: ReaderService | None = None) -> FastAPI:
     @api.get("/api/page")
     def page(book_id: int, page_id: int):
         try: return svc().page(book_id, page_id)
-        except (LookupError, RuntimeError) as exc: raise HTTPException(404, str(exc)) from exc
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(503, "Mesin pembaca sedang tidak tersedia") from exc
 
     @api.get("/api/index")
     def index(book_id: int): return svc().index(book_id)
@@ -152,14 +187,57 @@ def create_app(service: ReaderService | None = None) -> FastAPI:
 
     @api.put("/api/bookmark")
     def toggle_bookmark(data: BookmarkInput):
+        if not svc().book(data.book_id) or not svc().reader.page_exists(data.book_id, data.page_id):
+            raise HTTPException(404, "Halaman tidak ditemukan")
         return {"bookmarked": svc().store.toggle_bookmark(data.book_id, data.page_id)}
+
+    @api.post("/api/ai/analyze")
+    def analyze_ai(data: AIAnalysisInput):
+        if data.mode not in {"language", "nahwu", "shorof", "munasabah"}:
+            raise HTTPException(400, "Mode analisis tidak valid")
+        book = svc().book(data.book_id)
+        if not book or not svc().reader.page_exists(data.book_id, data.page_id):
+            raise HTTPException(404, "Kitab atau halaman tidak ditemukan")
+        source = {"book_name": book["name"], "authors": book["authors"], "page_id": data.page_id, "chapter": ""}
+        try:
+            chapters = svc().index(data.book_id)
+            eligible = [c for c in chapters if c["page_id"] <= data.page_id]
+            if eligible: source["chapter"] = eligible[-1]["title"]
+            return ai().analyze(mode=data.mode, text=data.text, word=data.word, context_before=data.context_before, context_after=data.context_after, source=source)
+        except ValueError as exc: raise HTTPException(400, str(exc)) from exc
+        except AIRateLimited as exc: raise HTTPException(429, str(exc)) from exc
+        except AIUnavailable as exc: raise HTTPException(503, str(exc)) from exc
+
+    @api.get("/api/ai/status")
+    def ai_status(): return ai().status()
+
+    @api.put("/api/ai/toggle")
+    def ai_toggle(data: AIToggleInput): return ai().set_enabled(data.enabled)
+
+    @api.put("/api/ai/provider")
+    def ai_provider(data: AIProviderInput):
+        try: return ai().set_provider(data.provider)
+        except ValueError as exc: raise HTTPException(400, str(exc)) from exc
+        except AIUnavailable as exc: raise HTTPException(503, str(exc)) from exc
 
     @api.get("/api/suggestions")
     def suggestions(normalized_word: str, limit: int = 8):
         return {"suggestions": svc().store.suggestions(normalized_word, max(1, min(limit, 20)))}
 
     @api.get("/api/search")
-    def search(q: str, book_ids: list[int] = Query(...), offset: int = 0): return svc().search(q, book_ids, offset)
+    def search(q: str = Query(..., min_length=1, max_length=500),
+               book_ids: list[int] = Query(..., min_length=1, max_length=200),
+               offset: int = Query(0, ge=0, le=1_000_000)):
+        return svc().search(q, book_ids, offset)
+
+    @api.get("/api/search/advanced")
+    def advanced_search(terms: list[str] = Query(..., min_length=1, max_length=4),
+                        operator: str = Query("AND", pattern="^(AND|OR|NOT|FUZZY)$"),
+                        book_ids: list[int] = Query(..., min_length=1, max_length=200),
+                        offset: int = Query(0, ge=0, le=1_000_000)):
+        if any(not term.strip() or len(term) > 500 for term in terms):
+            raise HTTPException(400, "Kata kunci tidak valid")
+        return svc().search_advanced(terms, operator, book_ids, offset)
 
     @api.put("/api/annotation")
     def save_annotation(data: AnnotationInput):
@@ -183,6 +261,8 @@ def create_app(service: ReaderService | None = None) -> FastAPI:
 
 
 def main():
+    import uvicorn
+
     parser = argparse.ArgumentParser(description="Web reader Logat Syamilah")
     parser.add_argument("--host", default="127.0.0.1"); parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--no-browser", action="store_true")

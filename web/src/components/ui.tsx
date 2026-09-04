@@ -47,7 +47,7 @@ export function AppShell({ view, theme, onView, onTheme, focusMode = false, chil
         </div>
         <nav className="mainnav" aria-label="Navigasi utama">
           {([['books','Daftar Kitab'],['reader','Baca Kitab'],['search','Cari'],['settings','Pengaturan']] as const).map(([id,label]) => (
-            <Button key={id} className={view === id ? 'active' : ''} onClick={() => onView(id)}>{label}</Button>
+            <Button key={id} className={view === id ? 'active' : ''} aria-current={view === id ? 'page' : undefined} onClick={() => onView(id)}>{label}</Button>
           ))}
         </nav>
         <Button className="theme-toggle" onClick={() => onTheme(nextTheme)} aria-label={`Tema ${theme}`}>

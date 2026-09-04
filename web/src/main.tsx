@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { api } from './api'
+import { aiStatus, api, searchAdvanced, switchAIProvider, toggleAI } from './api'
 import { AnnotationEditor } from './components/AnnotationEditor'
+import { AITutorPanel } from './components/AITutorPanel'
 import { BookCatalog } from './components/BookCatalog'
 import { Reader } from './components/Reader'
 import type { ReaderPrefs } from './components/Reader'
@@ -46,6 +47,10 @@ export function App() {
   const [results, setResults] = useState<Result[]>([])
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
   const [selectedToken, setSelectedToken] = useState<Token>()
+  const [aiOpen, setAiOpen] = useState(false)
+  const [aiEnabled, setAiEnabled] = useState(false)
+  const [aiProvider, setAiProvider] = useState('')
+  const [aiModel, setAiModel] = useState('')
   const [meaning, setMeaning] = useState('')
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [suggestionStatus, setSuggestionStatus] = useState<Status>('idle')
@@ -58,6 +63,7 @@ export function App() {
   const [catalogStatus, setCatalogStatus] = useState<Status>('loading')
   const [readerStatus, setReaderStatus] = useState<Status>('idle')
   const [searchStatus, setSearchStatus] = useState<Status>('idle')
+  const [hasSearched, setHasSearched] = useState(false)
   const [catalogError, setCatalogError] = useState('')
   const [readerError, setReaderError] = useState('')
   const [searchError, setSearchError] = useState('')
@@ -72,6 +78,7 @@ export function App() {
         setBooks(loadedBooks)
         setItems(loadedItems)
         setAuthors(loadedAuthors)
+        setCatalogError('')
         setCatalogStatus('idle')
       })
       .catch(error => {
@@ -81,6 +88,7 @@ export function App() {
   }
 
   const openBook = (nextBook: Book, nextPage = 1) => {
+    setReaderError('')
     setBook(nextBook)
     setPageNo(nextPage)
     setView('reader')
@@ -96,6 +104,7 @@ export function App() {
 
   const loadPage = (targetBook: Book, targetPage: number) => {
     setReaderStatus('loading')
+    setReaderError('')
     api.page(targetBook.id, targetPage)
       .then(loadedPage => {
         setPage(loadedPage)
@@ -119,35 +128,54 @@ export function App() {
 
   const saveAnnotation = async () => {
     if (!book || !selectedToken) return
-    await api.save(book.id, pageNo, selectedToken, meaning)
-    setSelectedToken(undefined)
-    setPage(await api.page(book.id, pageNo))
-    setToast('Logat tersimpan')
+    try {
+      await api.save(book.id, pageNo, selectedToken, meaning)
+      setPage(await api.page(book.id, pageNo))
+      setSelectedToken(undefined)
+      setToast('Logat tersimpan')
+    } catch (error) {
+      setToast(errorMessage(error))
+      throw error
+    }
   }
 
   const deleteAnnotation = async () => {
     if (!book || !selectedToken) return
-    await api.delete(book.id, pageNo, selectedToken)
-    setSelectedToken(undefined)
-    setPage(await api.page(book.id, pageNo))
-    setToast('Logat dihapus')
+    try {
+      await api.delete(book.id, pageNo, selectedToken)
+      setPage(await api.page(book.id, pageNo))
+      setSelectedToken(undefined)
+      setToast('Logat dihapus')
+    } catch (error) {
+      setToast(errorMessage(error))
+      throw error
+    }
   }
 
   const togglePageBookmark = async () => {
     if (!book) return
-    const result = await api.toggleBookmark(book.id, pageNo)
-    setPage(current => current ? { ...current, bookmarked: result.bookmarked } : current)
-    loadBookmarks()
-    setToast(result.bookmarked ? 'Halaman ditandai' : 'Bookmark dihapus')
+    try {
+      const result = await api.toggleBookmark(book.id, pageNo)
+      setPage(current => current ? { ...current, bookmarked: result.bookmarked } : current)
+      loadBookmarks()
+      setToast(result.bookmarked ? 'Halaman ditandai' : 'Bookmark dihapus')
+    } catch (error) {
+      setToast(errorMessage(error))
+    }
   }
 
-  const runSearch = () => {
-    if (!term || !pickedBookIds.length) return
-    setRecentSearches(current => [term, ...current.filter(item => item !== term)].slice(0, 6))
+  const runSearch = (terms: string[] = [term], operator = 'AND') => {
+    const query = terms.join(` ${operator} `)
+    if (!terms.length || !pickedBookIds.length) return
+    setRecentSearches(current => [query, ...current.filter(item => item !== query)].slice(0, 6))
+    setHasSearched(true)
+    setSearchError('')
     setSearchStatus('loading')
-    api.search(term, pickedBookIds)
+    searchAdvanced(terms, operator, pickedBookIds)
       .then(searchResult => {
         setResults(searchResult.results)
+        setSearchError('')
+        setHasSearched(true)
         setSearchStatus('idle')
       })
       .catch(error => {
@@ -202,6 +230,8 @@ export function App() {
     if (!bookId) return
     api.book(bookId).then(loadedBook => openBook(loadedBook, initialPage)).catch(error => setReaderError(errorMessage(error)))
   }, [])
+
+  useEffect(() => { aiStatus().then(status => { setAiEnabled(status.enabled); setAiProvider(status.provider); setAiModel(status.model) }).catch(() => {}) }, [])
 
   useEffect(() => {
     api.health().then(() => setToast('Pembaca Syamilah siap')).catch(() => setToast('Koneksi pembaca Syamilah bermasalah'))
@@ -289,6 +319,7 @@ export function App() {
           onRetry={() => book && loadPage(book, pageNo)}
           onFocusMode={setFocusMode}
           onToggleBookmark={togglePageBookmark}
+          onAskAI={() => setAiOpen(true)}
           onOpenBookmark={bookmark => api.book(bookmark.book_id).then(loadedBook => openBook(loadedBook, bookmark.page_id))}
           onEditToken={token => {
             setSelectedToken(token)
@@ -325,6 +356,11 @@ export function App() {
             setToast('Layout reader direset')
           }}
           onClearStorage={clearUiStorage}
+          aiEnabled={aiEnabled}
+          aiProvider={aiProvider}
+          aiModel={aiModel}
+          onToggleAI={enabled => { toggleAI(enabled).then(status => { setAiEnabled(status.enabled); setToast(status.enabled ? 'Asisten AI diaktifkan' : 'Asisten AI dinonaktifkan') }).catch(error => setToast(errorMessage(error))) }}
+          onProvider={provider => { switchAIProvider(provider).then(status => { setAiProvider(status.provider); setAiModel(status.model); setAiEnabled(status.enabled); setToast(`Provider AI: ${status.provider}`) }).catch(error => setToast(errorMessage(error))) }}
         />
       )}
 
@@ -335,6 +371,7 @@ export function App() {
           selectedBookIds={pickedBookIds}
           recentSearches={recentSearches}
           results={results}
+          hasSearched={hasSearched}
           status={searchStatus}
           error={searchError}
           onTerm={setTerm}
@@ -350,7 +387,7 @@ export function App() {
         />
       )}
 
-      <AnnotationEditor
+      {!aiOpen && <AnnotationEditor
         token={selectedToken}
         meaning={meaning}
         suggestions={suggestions}
@@ -360,7 +397,10 @@ export function App() {
         onSave={saveAnnotation}
         onDelete={deleteAnnotation}
         onClose={() => setSelectedToken(undefined)}
-      />
+        onAskAI={() => setAiOpen(true)}
+      />}
+
+      {aiOpen && book && page && <AITutorPanel book={book} page={page} token={selectedToken} onClose={() => setAiOpen(false)} onDraft={draft => { setMeaning(draft); setAiOpen(false); if (!selectedToken) setToast('Pilih kata untuk memakai draft logat') }} />}
 
       {toast && <div className="toast" role="status">{toast}</div>}
     </AppShell>

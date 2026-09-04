@@ -15,6 +15,10 @@ cd web && npm install && npm run build && cd ..
 
 Server hanya mendengarkan `127.0.0.1:8765`; data Maktabah Syamilah tetap dibaca saja. Anotasi lama dari `logat/logat.db` dimigrasikan otomatis ke `~/.local/share/logat-syamilah/logat.db`.
 
+Asisten AI dapat memakai Ollama secara lokal tanpa billing API. Default lokal adalah `qwen3:4b`; model ini sudah dipasang oleh Ollama dan dipakai dalam mode jawaban langsung agar lebih cepat di CPU. Jika ingin mengganti model, atur `OLLAMA_MODEL` dan pastikan model tersebut sudah tersedia. OpenAI API tetap dapat dipakai dengan `AI_PROVIDER=openai` dan `OPENAI_API_KEY`.
+
+Untuk Gemini, salin `.env.example` menjadi `.env` di folder utama project ini (`/home/ilham-rizqiawan/Documents/shamela/logat/.env`), lalu isi `GEMINI_API_KEY`. Default modelnya `gemini-3.5-flash-lite`; provider otomatis memilih Gemini bila key tersebut tersedia. File `.env` tidak boleh di-commit.
+
 ## Menjalankan versi native GTK dari sumber
 
 Jalankan:

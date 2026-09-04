@@ -98,6 +98,7 @@ function ReaderIndex({ chapters, parts, bookmarks, chapterQuery, currentPage, is
 
       <TextField value={chapterQuery} onChange={event => onChapterQuery(event.target.value)} placeholder="Cari bab..." />
       <div className="chapter-list">
+        {rows.length === 0 && <p className="muted small">Tidak ada bab yang cocok.</p>}
         {rows.map(({ chapter, level }) => {
           const hasChildren = chapter.children.length > 0
           const isCollapsed = collapsed.has(chapter.id)
@@ -154,11 +155,12 @@ type Props = {
   onRetry: () => void
   onFocusMode: (value: boolean) => void
   onToggleBookmark: () => void
+  onAskAI: () => void
   onOpenBookmark: (bookmark: Bookmark) => void
   onEditToken: (token: Token) => void
 }
 
-export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapterQuery, status, error, focusMode, prefs, onPrefs, onChapterQuery, onChooseBook, onPage, onRetry, onFocusMode, onToggleBookmark, onOpenBookmark, onEditToken }: Props) {
+export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapterQuery, status, error, focusMode, prefs, onPrefs, onChapterQuery, onChooseBook, onPage, onRetry, onFocusMode, onToggleBookmark, onAskAI, onOpenBookmark, onEditToken }: Props) {
   const [indexOpen, setIndexOpen] = useState(false)
   const readerTop = useRef<HTMLElement>(null)
 
@@ -197,7 +199,14 @@ export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapter
           onOpenBookmark={onOpenBookmark}
         />
       )}
-      <div className={`sheet-backdrop ${indexOpen ? 'show' : ''}`} onClick={() => setIndexOpen(false)} />
+      <div
+        className={`sheet-backdrop ${indexOpen ? 'show' : ''}`}
+        role="button"
+        tabIndex={indexOpen ? 0 : -1}
+        aria-label="Tutup indeks"
+        onClick={() => setIndexOpen(false)}
+        onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setIndexOpen(false) } }}
+      />
 
       <section className="reader-screen" ref={readerTop}>
         <div className="reader-title" dir="rtl">
@@ -210,20 +219,21 @@ export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapter
             <Button className={`bookmark-page ${page?.bookmarked ? 'active' : ''}`} onClick={onToggleBookmark} aria-label={page?.bookmarked ? 'Hapus bookmark halaman' : 'Bookmark halaman'}>
               {page?.bookmarked ? '★ Bookmark' : '☆ Bookmark'}
             </Button>
+            <Button className="ai-trigger" onClick={onAskAI}>Asisten AI</Button>
             <Button className="focus-toggle" onClick={() => onFocusMode(!focusMode)}>{focusMode ? 'Tampilkan panel' : 'Mode fokus'}</Button>
           </div>
         </div>
 
         <nav className="reader-nav" aria-label="Navigasi halaman">
-          <Button onClick={() => onPage(Math.max(1, pageNo - 1))}>← Sebelumnya</Button>
-          <TextField value={pageNo} type="number" min={1} onChange={event => onPage(Number(event.target.value) || 1)} />
-          <Button onClick={() => onPage(pageNo + 1)}>Berikutnya →</Button>
+          <Button disabled={status === 'loading'} onClick={() => onPage(Math.max(1, pageNo - 1))}>← Sebelumnya</Button>
+          <TextField disabled={status === 'loading'} value={pageNo} type="number" min={1} onChange={event => onPage(Number(event.target.value) || 1)} />
+          <Button disabled={status === 'loading'} onClick={() => onPage(pageNo + 1)}>Berikutnya →</Button>
         </nav>
 
         <div className="reader-toolbar" aria-label="Pengaturan tampilan reader">
-          <label>Ukuran <input type="range" min="24" max="44" value={prefs.fontSize} onChange={event => onPrefs({ ...prefs, fontSize: Number(event.target.value) })} /></label>
-          <label>Spasi <input type="range" min="1.8" max="2.7" step="0.05" value={prefs.lineHeight} onChange={event => onPrefs({ ...prefs, lineHeight: Number(event.target.value) })} /></label>
-          <label>Lebar <input type="range" min="720" max="1240" step="20" value={prefs.columnWidth} onChange={event => onPrefs({ ...prefs, columnWidth: Number(event.target.value) })} /></label>
+          <label><span>Ukuran <output>{prefs.fontSize}px</output></span><input aria-label="Ukuran huruf" type="range" min="24" max="44" value={prefs.fontSize} onChange={event => onPrefs({ ...prefs, fontSize: Number(event.target.value) })} /></label>
+          <label><span>Spasi <output>{prefs.lineHeight.toFixed(2)}</output></span><input aria-label="Jarak antarbaris" type="range" min="1.8" max="2.7" step="0.05" value={prefs.lineHeight} onChange={event => onPrefs({ ...prefs, lineHeight: Number(event.target.value) })} /></label>
+          <label><span>Lebar <output>{prefs.columnWidth}px</output></span><input aria-label="Lebar kolom bacaan" type="range" min="720" max="1240" step="20" value={prefs.columnWidth} onChange={event => onPrefs({ ...prefs, columnWidth: Number(event.target.value) })} /></label>
           <div className="segmented" role="group" aria-label="Font Arab">
             <Button className={prefs.fontFamily === 'amiri' ? 'active' : ''} onClick={() => onPrefs({ ...prefs, fontFamily: 'amiri' })}>Amiri</Button>
             <Button className={prefs.fontFamily === 'naskh' ? 'active' : ''} onClick={() => onPrefs({ ...prefs, fontFamily: 'naskh' })}>Naskh</Button>
