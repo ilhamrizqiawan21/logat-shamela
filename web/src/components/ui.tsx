@@ -31,7 +31,7 @@ export function ErrorState({ message, retry }: { message: string; retry: () => v
   return <StateCard title="Tidak dapat memuat data" message={message} action={<Button onClick={retry}>Coba lagi</Button>} />
 }
 
-type View = 'books'|'reader'|'search'|'settings'
+type View = 'books'|'reader'|'search'|'settings'|'bookmarks'
 type Theme = 'system'|'light'|'dark'
 
 export function AppShell({ view, theme, onView, onTheme, focusMode = false, children }: { view: string; theme: Theme; onView: (v: View) => void; onTheme: (theme: Theme) => void; focusMode?: boolean; children: ReactNode }) {
@@ -46,7 +46,7 @@ export function AppShell({ view, theme, onView, onTheme, focusMode = false, chil
           <span>Logat Syamilah<small>Ruang belajar kitab</small></span>
         </div>
         <nav className="mainnav" aria-label="Navigasi utama">
-          {([['books','Daftar Kitab'],['reader','Baca Kitab'],['search','Cari'],['settings','Pengaturan']] as const).map(([id,label]) => (
+          {([['books','Beranda'],['reader','Baca Kitab'],['search','Cari'],['bookmarks','Bookmark'],['settings','Pengaturan']] as const).map(([id,label]) => (
             <Button key={id} className={view === id ? 'active' : ''} aria-current={view === id ? 'page' : undefined} onClick={() => onView(id)}>{label}</Button>
           ))}
         </nav>

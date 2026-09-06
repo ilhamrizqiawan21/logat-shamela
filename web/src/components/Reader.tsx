@@ -25,6 +25,7 @@ type ReaderIndexProps = {
   onChapterQuery: (value: string) => void
   onPage: (page: number) => void
   onOpenBookmark: (bookmark: Bookmark) => void
+  onManageBookmarks: () => void
 }
 
 function buildChapterTree(chapters: Chapter[]) {
@@ -46,7 +47,7 @@ function flattenVisible(nodes: TreeChapter[], collapsed: Set<number>, level = 0)
   })
 }
 
-function ReaderIndex({ chapters, parts, bookmarks, chapterQuery, currentPage, isOpen = false, onClose, onChapterQuery, onPage, onOpenBookmark }: ReaderIndexProps) {
+function ReaderIndex({ chapters, parts, bookmarks, chapterQuery, currentPage, isOpen = false, onClose, onChapterQuery, onPage, onOpenBookmark, onManageBookmarks }: ReaderIndexProps) {
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set())
   const tree = useMemo(() => buildChapterTree(chapters), [chapters])
   const activeChapterId = useMemo(() => {
@@ -123,7 +124,8 @@ function ReaderIndex({ chapters, parts, bookmarks, chapterQuery, currentPage, is
       </div>
 
       <div className="bookmark-list">
-        <h3>Bookmark</h3>
+        <h3>Bookmark terbaru</h3>
+        <Button className="manage-bookmarks" onClick={() => { onManageBookmarks(); onClose?.() }}>Kelola semua bookmark ({bookmarks.length})</Button>
         {bookmarks.length === 0 && <p className="muted small">Belum ada halaman yang ditandai.</p>}
         {bookmarks.slice(0, 12).map(bookmark => (
           <Button key={`${bookmark.book_id}-${bookmark.page_id}`} className="bookmark-row" onClick={() => { onOpenBookmark(bookmark); onClose?.() }} dir="rtl">
@@ -157,16 +159,35 @@ type Props = {
   onToggleBookmark: () => void
   onAskAI: () => void
   onOpenBookmark: (bookmark: Bookmark) => void
+  onManageBookmarks: () => void
   onEditToken: (token: Token) => void
 }
 
-export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapterQuery, status, error, focusMode, prefs, onPrefs, onChapterQuery, onChooseBook, onPage, onRetry, onFocusMode, onToggleBookmark, onAskAI, onOpenBookmark, onEditToken }: Props) {
+export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapterQuery, status, error, focusMode, prefs, onPrefs, onChapterQuery, onChooseBook, onPage, onRetry, onFocusMode, onToggleBookmark, onAskAI, onOpenBookmark, onManageBookmarks, onEditToken }: Props) {
   const [indexOpen, setIndexOpen] = useState(false)
+  const [pageInput, setPageInput] = useState(String(pageNo))
+  useEffect(() => setPageInput(String(pageNo)), [book?.id, pageNo])
   const readerTop = useRef<HTMLElement>(null)
 
   useEffect(() => {
-    readerTop.current?.scrollIntoView({ block: 'start' })
-  }, [pageNo])
+    if (!book || status !== 'idle' || page?.page_id !== pageNo || page.book_id !== book.id) return
+    const key = `logat:scroll:${book.id}:${pageNo}`
+    let saved: string | null = null
+    try { saved = localStorage.getItem(key) } catch {}
+    const position = Number(saved)
+    if (saved !== null && Number.isFinite(position) && position >= 0) window.scrollTo(0, position)
+    else readerTop.current?.scrollIntoView({ block: 'start' })
+    let lastPosition = window.scrollY
+    const save = () => { try { localStorage.setItem(key, String(lastPosition)) } catch {} }
+    const onScroll = () => { lastPosition = window.scrollY }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('pagehide', save)
+    return () => {
+      save()
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('pagehide', save)
+    }
+  }, [book?.id, page?.page_id, pageNo, status])
 
   if (!book) {
     return (
@@ -197,6 +218,7 @@ export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapter
           onChapterQuery={onChapterQuery}
           onPage={onPage}
           onOpenBookmark={onOpenBookmark}
+          onManageBookmarks={onManageBookmarks}
         />
       )}
       <div
@@ -216,17 +238,20 @@ export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapter
           </div>
           <div className="title-actions">
             <Button className="index-trigger" onClick={() => setIndexOpen(true)}>Indeks</Button>
-            <Button className={`bookmark-page ${page?.bookmarked ? 'active' : ''}`} onClick={onToggleBookmark} aria-label={page?.bookmarked ? 'Hapus bookmark halaman' : 'Bookmark halaman'}>
+            <Button disabled={status !== 'idle' || !page} className={`bookmark-page ${page?.bookmarked ? 'active' : ''}`} onClick={onToggleBookmark} aria-label={page?.bookmarked ? 'Hapus bookmark halaman' : 'Bookmark halaman'}>
               {page?.bookmarked ? '★ Bookmark' : '☆ Bookmark'}
             </Button>
-            <Button className="ai-trigger" onClick={onAskAI}>Asisten AI</Button>
+            <Button disabled={status !== 'idle' || !page} className="ai-trigger" onClick={onAskAI}>Asisten AI</Button>
             <Button className="focus-toggle" onClick={() => onFocusMode(!focusMode)}>{focusMode ? 'Tampilkan panel' : 'Mode fokus'}</Button>
           </div>
         </div>
 
         <nav className="reader-nav" aria-label="Navigasi halaman">
-          <Button disabled={status === 'loading'} onClick={() => onPage(Math.max(1, pageNo - 1))}>← Sebelumnya</Button>
-          <TextField disabled={status === 'loading'} value={pageNo} type="number" min={1} onChange={event => onPage(Number(event.target.value) || 1)} />
+          <Button disabled={status === 'loading' || pageNo <= 1} onClick={() => onPage(Math.max(1, pageNo - 1))}>← Sebelumnya</Button>
+          <form className="page-jump" onSubmit={event => { event.preventDefault(); const target = Number(pageInput); if (Number.isSafeInteger(target) && target >= 1) onPage(target) }}>
+            <TextField aria-label="Nomor halaman" required value={pageInput} type="number" min={1} step={1} onChange={event => setPageInput(event.target.value)} />
+            <Button type="submit" disabled={status === 'loading'}>Buka</Button>
+          </form>
           <Button disabled={status === 'loading'} onClick={() => onPage(pageNo + 1)}>Berikutnya →</Button>
         </nav>
 

@@ -185,6 +185,11 @@ def create_app(service: ReaderService | None = None, ai_service: AIService | Non
     @api.get("/api/bookmarks")
     def bookmarks(): return svc().bookmarks()
 
+    @api.delete("/api/bookmark")
+    def delete_bookmark(data: BookmarkInput):
+        svc().store.delete_bookmark(data.book_id, data.page_id)
+        return {"bookmarked": False}
+
     @api.put("/api/bookmark")
     def toggle_bookmark(data: BookmarkInput):
         if not svc().book(data.book_id) or not svc().reader.page_exists(data.book_id, data.page_id):
@@ -249,6 +254,18 @@ def create_app(service: ReaderService | None = None, ai_service: AIService | Non
     @api.delete("/api/annotation")
     def delete_annotation(data: AnnotationInput):
         svc().store.delete(data.book_id, data.page_id, data.word_index)
+        return {"ok": True}
+
+    @api.get("/api/data/export")
+    def export_data():
+        return svc().store.export_data()
+
+    @api.post("/api/data/import")
+    def import_data(data: dict):
+        try:
+            svc().store.import_data(data)
+        except (TypeError, ValueError, KeyError, sqlite3.Error) as exc:
+            raise HTTPException(400, str(exc) or "Backup tidak valid") from exc
         return {"ok": True}
 
     if DIST_DIR.is_dir():

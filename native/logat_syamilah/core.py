@@ -9,6 +9,7 @@ import shutil
 import sqlite3
 import subprocess
 import threading
+from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime
 from html.parser import HTMLParser
@@ -70,21 +71,21 @@ class CatalogRepository:
                  FROM book b JOIN category c ON c.category_id=b.book_category
                  LEFT JOIN author_book ab ON ab.book_id=b.book_id LEFT JOIN author a ON a.author_id=ab.author_id
                  WHERE """ + " AND ".join(clauses) + " GROUP BY b.book_id ORDER BY b.book_name"
-        with self._connect() as db: return [self._book(r) for r in db.execute(sql, args)]
+        with self.connect() as db: return [self._book(r) for r in db.execute(sql, args)]
 
     def categories(self, query=""):
         sql = """SELECT c.category_id,c.category_name,COUNT(b.book_id) FROM category c JOIN book b ON b.book_category=c.category_id AND b.major_ondisk>0"""
         args = []
         if query.strip(): sql += " WHERE c.category_name LIKE ?"; args.append(f"%{query.strip()}%")
         sql += " GROUP BY c.category_id ORDER BY c.category_order,c.category_name"
-        with self._connect() as db: return [CatalogItem(*r) for r in db.execute(sql, args)]
+        with self.connect() as db: return [CatalogItem(*r) for r in db.execute(sql, args)]
 
     def authors(self, query=""):
         sql = """SELECT a.author_id,a.author_name,COUNT(DISTINCT b.book_id) FROM author a JOIN author_book ab ON ab.author_id=a.author_id JOIN book b ON b.book_id=ab.book_id AND b.major_ondisk>0"""
         args = []
         if query.strip(): sql += " WHERE a.author_name LIKE ?"; args.append(f"%{query.strip()}%")
         sql += " GROUP BY a.author_id ORDER BY a.alpha,a.author_name"
-        with self._connect() as db: return [CatalogItem(*r) for r in db.execute(sql, args)]
+        with self.connect() as db: return [CatalogItem(*r) for r in db.execute(sql, args)]
 
 
 class ShamelaMarkupParser(HTMLParser):
@@ -241,6 +242,10 @@ class LogatStore:
         with self.connect() as db:
             return [dict(r) for r in db.execute("SELECT book_id,page_id,created_at FROM bookmark ORDER BY created_at DESC")]
 
+    def delete_bookmark(self, book_id: int, page_id: int) -> None:
+        with closing(self.connect()) as db, db:
+            db.execute("DELETE FROM bookmark WHERE book_id=? AND page_id=?", (book_id, page_id))
+
     def toggle_bookmark(self, book_id: int, page_id: int) -> bool:
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -260,8 +265,49 @@ class LogatStore:
 
     def export_json(self, target: Path):
         with self.connect() as db:
-            rows = [dict(r) for r in db.execute("SELECT * FROM annotation ORDER BY book_id,page_id,word_index")]
-        target.write_text(json.dumps({"version": self.SCHEMA_VERSION, "annotations": rows}, ensure_ascii=False, indent=2), encoding="utf-8")
+            data = self.export_data(db)
+        target.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def export_data(self, db=None):
+        owns_connection = db is None
+        db = db or self.connect()
+        try:
+            return {
+                "format": "logat-syamilah-backup",
+                "version": 1,
+                "annotations": [dict(row) for row in db.execute("SELECT * FROM annotation ORDER BY book_id,page_id,word_index")],
+                "bookmarks": [dict(row) for row in db.execute("SELECT book_id,page_id,created_at FROM bookmark ORDER BY created_at")],
+            }
+        finally:
+            if owns_connection:
+                db.close()
+
+    def import_data(self, data: dict):
+        if data.get("format") != "logat-syamilah-backup" or data.get("version") != 1:
+            raise ValueError("Format backup tidak didukung")
+        annotations = data.get("annotations")
+        bookmarks = data.get("bookmarks", [])
+        if not isinstance(annotations, list) or not isinstance(bookmarks, list):
+            raise ValueError("Isi backup tidak valid")
+        required = {"book_id", "page_id", "word_index", "word", "meaning"}
+        if any(not isinstance(row, dict) or not required <= row.keys() for row in annotations):
+            raise ValueError("Data logat pada backup tidak valid")
+        if any(not isinstance(row, dict) or not {"book_id", "page_id"} <= row.keys() for row in bookmarks):
+            raise ValueError("Data bookmark pada backup tidak valid")
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            db.execute("DELETE FROM annotation")
+            db.execute("DELETE FROM bookmark")
+            for row in annotations:
+                db.execute("""INSERT INTO annotation
+                    (book_id,page_id,word_index,word,meaning,normalized_word,prev_word,next_word,created_at,updated_at)
+                    VALUES(?,?,?,?,?,?,?,?,?,?)""", (
+                    row["book_id"], row["page_id"], row["word_index"], row["word"], row["meaning"],
+                    row.get("normalized_word", ""), row.get("prev_word", ""), row.get("next_word", ""),
+                    row.get("created_at", ""), row.get("updated_at", "")))
+            for row in bookmarks:
+                db.execute("INSERT INTO bookmark(book_id,page_id,created_at) VALUES(?,?,?)",
+                           (row["book_id"], row["page_id"], row.get("created_at", "")))
 
 
 class ShamelaReader:

@@ -6,6 +6,9 @@ type Status = 'idle' | 'loading' | 'error'
 
 type Props = {
   books: Book[]
+  booksStatus: Status
+  booksError: string
+  onRetryBooks: () => void
   term: string
   selectedBookIds: number[]
   recentSearches: string[]
@@ -32,7 +35,7 @@ function Highlight({ text, term }: { text: string; term: string }) {
   )
 }
 
-export function SearchWorkspace({ books, term, selectedBookIds, recentSearches, results, hasSearched, status, error, onTerm, onToggleBook, onSelectAll, onClearBooks, onUsePreset, onSearch, onOpenResult }: Props) {
+export function SearchWorkspace({ books, booksStatus, booksError, onRetryBooks, term, selectedBookIds, recentSearches, results, hasSearched, status, error, onTerm, onToggleBook, onSelectAll, onClearBooks, onUsePreset, onSearch, onOpenResult }: Props) {
   const [bookQuery, setBookQuery] = useState('')
   const [keywords, setKeywords] = useState<string[]>([term, '', '', ''])
   const [operator, setOperator] = useState<'AND' | 'OR' | 'NOT' | 'FUZZY'>('AND')
@@ -71,11 +74,14 @@ export function SearchWorkspace({ books, term, selectedBookIds, recentSearches, 
       <div className="search-workspace">
         <aside className="search-filter">
           <div className="filter-title">
-            <h3>Filter kitab</h3>
+            <h3>Cakupan pencarian</h3>
             <span>{selectedBookIds.length} dipilih</span>
           </div>
+          <p className="muted small">{books.length} kitab dalam perpustakaan. Cakupan ini tidak mengikuti filter beranda.</p>
+          {booksStatus === 'loading' && <Skeleton lines={3} />}
+          {booksStatus === 'error' && <ErrorState message={booksError} retry={onRetryBooks} />}
           <div className="filter-actions">
-            <Button onClick={onSelectAll}>Pilih semua</Button>
+            <Button disabled={booksStatus !== 'idle'} onClick={onSelectAll}>Pilih semua kitab</Button>
             <Button onClick={onClearBooks}>Kosongkan</Button>
           </div>
           <label className="field-label">

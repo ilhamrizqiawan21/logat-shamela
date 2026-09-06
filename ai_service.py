@@ -47,7 +47,7 @@ class AIService:
             self.model = self.model or os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
             return
         if self.provider == "ollama":
-            self.model = self.model or os.environ.get("OLLAMA_MODEL", "qwen3:4b")
+            self.model = self.model or os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
             return
         self.model = self.model or os.environ.get("OPENAI_MODEL", "gpt-5-mini")
         if self.client is None and os.environ.get("OPENAI_API_KEY"):
@@ -122,7 +122,7 @@ class AIService:
             raise ValueError("Provider AI tidak valid")
         with self._state_lock:
             if provider == "ollama":
-                target_model = os.environ.get("OLLAMA_MODEL", "qwen3:4b")
+                target_model = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
                 self._ensure_ollama(target_model)
                 self.provider = "ollama"
                 self.model = target_model
@@ -131,12 +131,22 @@ class AIService:
                 self.model = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
             return self.status()
 
-    def _gemini(self, system: str, user_payload: str, mode: str, source: dict) -> dict:
-        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={os.environ.get('GEMINI_API_KEY', '')}"
-        body = {"system_instruction": {"parts": [{"text": system}]}, "contents": [{"role": "user", "parts": [{"text": user_payload}]}], "generationConfig": {"responseMimeType": "application/json", "temperature": 0.1, "maxOutputTokens": 500}}
-        request = urllib.request.Request(endpoint, data=json.dumps(body, ensure_ascii=False).encode(), headers={"Content-Type": "application/json"})
+    @staticmethod
+    def _gemini_setting(name: str, default: int, minimum: int, maximum: int) -> int:
         try:
-            with urllib.request.urlopen(request, timeout=45) as response:
+            return max(minimum, min(maximum, int(os.environ.get(name, str(default)))))
+        except ValueError:
+            return default
+
+    def _gemini(self, system: str, user_payload: str, mode: str, source: dict) -> dict:
+        key = os.environ.get("GEMINI_API_KEY", "").strip()
+        if not key:
+            raise AIUnavailable("GEMINI_API_KEY belum diisi. Isi .env lalu mulai ulang aplikasi.")
+        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
+        body = {"system_instruction": {"parts": [{"text": system}]}, "contents": [{"role": "user", "parts": [{"text": user_payload}]}], "generationConfig": {"responseMimeType": "application/json", "temperature": 0.1, "maxOutputTokens": self._gemini_setting("GEMINI_MAX_OUTPUT_TOKENS", 500, 128, 8192)}}
+        request = urllib.request.Request(endpoint, data=json.dumps(body, ensure_ascii=False).encode(), headers={"Content-Type": "application/json", "x-goog-api-key": key})
+        try:
+            with urllib.request.urlopen(request, timeout=self._gemini_setting("GEMINI_TIMEOUT", 45, 5, 90)) as response:
                 payload = json.loads(response.read().decode())
             content = payload["candidates"][0]["content"]["parts"][0]["text"]
             parsed = json.loads(content)

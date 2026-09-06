@@ -15,9 +15,23 @@ cd web && npm install && npm run build && cd ..
 
 Server hanya mendengarkan `127.0.0.1:8765`; data Maktabah Syamilah tetap dibaca saja. Anotasi lama dari `logat/logat.db` dimigrasikan otomatis ke `~/.local/share/logat-syamilah/logat.db`.
 
-Asisten AI dapat memakai Ollama secara lokal tanpa billing API. Default lokal adalah `qwen3:4b`; model ini sudah dipasang oleh Ollama dan dipakai dalam mode jawaban langsung agar lebih cepat di CPU. Jika ingin mengganti model, atur `OLLAMA_MODEL` dan pastikan model tersebut sudah tersedia. OpenAI API tetap dapat dipakai dengan `AI_PROVIDER=openai` dan `OPENAI_API_KEY`.
+### Backup dan restore logat
 
-Untuk Gemini, salin `.env.example` menjadi `.env` di folder utama project ini (`/home/ilham-rizqiawan/Documents/shamela/logat/.env`), lalu isi `GEMINI_API_KEY`. Default modelnya `gemini-3.5-flash-lite`; provider otomatis memilih Gemini bila key tersebut tersedia. File `.env` tidak boleh di-commit.
+Logat dan bookmark disimpan lokal per-device di `~/.local/share/logat-syamilah/logat.db`. Dari menu **Pengaturan**, gunakan **Unduh backup logat** untuk membuat file JSON, lalu **Pulihkan backup** hanya pada device yang dipilih. Tidak ada sinkronisasi otomatis antar-device; restore mengganti logat dan bookmark lokal setelah konfirmasi.
+
+Asisten AI dapat memakai Ollama secara lokal tanpa billing API. Default lokal adalah `qwen2.5:7b`. Pastikan nama pada `OLLAMA_MODEL` sama persis dengan model yang tersedia di `ollama list`. Jika ingin mengganti model, atur `OLLAMA_MODEL` dan pastikan model tersebut sudah tersedia. OpenAI API tetap dapat dipakai dengan `AI_PROVIDER=openai` dan `OPENAI_API_KEY`.
+
+Untuk Gemini, gunakan `.env` di folder utama proyek. Isi `GEMINI_API_KEY` dan pastikan `AI_PROVIDER=gemini`, lalu mulai ulang `./run-logat.sh`. Model default adalah `gemini-3.5-flash-lite`. `GEMINI_TIMEOUT` mengatur batas waktu permintaan (default 45 detik), dan `GEMINI_MAX_OUTPUT_TOKENS` membatasi panjang keluaran (default 500). Key kosong menghasilkan pesan konfigurasi tanpa mengirim permintaan ke Gemini. `.env` diabaikan Git; jangan memasukkan key ke variabel `VITE_` karena variabel tersebut masuk frontend.
+
+Pembaca mengingat halaman terakhir dan posisi gulir per halaman di browser yang sama. Nomor halaman diterapkan dengan Enter atau tombol **Buka**. Cakupan **Cari dalam kitab** terpisah dari filter beranda.
+
+### Draf logat dan bookmark
+
+Draf arti disimpan otomatis di browser per kata dan dipulihkan ketika kata yang sama dibuka lagi, termasuk setelah memuat ulang aplikasi. Draf belum masuk database atau backup logat sebelum menekan **Simpan**. Jika penyimpanan browser gagal, editor menampilkan peringatan dan meminta konfirmasi sebelum ditutup.
+
+Gunakan **Simpan & kata berikutnya** atau `Ctrl+Shift+Enter` untuk menyimpan lalu mengedit kata berikutnya pada halaman yang sama. `Ctrl+Enter` menyimpan dan menutup editor. Ketika penyimpanan gagal, draf dan kata aktif tetap dipertahankan.
+
+Menu **Bookmark** menampilkan seluruh bookmark dengan pencarian judul/musonnif/nomor halaman, filter kitab, pemuatan bertahap, dan penghapusan per halaman. Menu ini juga tersedia melalui **Kelola semua bookmark** pada indeks pembaca.
 
 ## Menjalankan versi native GTK dari sumber
 

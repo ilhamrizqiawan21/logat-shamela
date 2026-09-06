@@ -15,6 +15,8 @@ type Props = {
   onPrefs: (prefs: ReaderPrefs) => void
   onResetReader: () => void
   onClearStorage: () => void
+  onExportBackup: () => void
+  onImportBackup: (file: File) => void
   aiEnabled: boolean
   aiProvider: string
   aiModel: string
@@ -22,7 +24,7 @@ type Props = {
   onProvider: (provider: string) => void
 }
 
-export function SettingsPanel({ theme, prefs, favoriteCount, bookmarkCount, recentBooks, recentSearches, onTheme, onPrefs, onResetReader, onClearStorage, aiEnabled, aiProvider, aiModel, onToggleAI, onProvider }: Props) {
+export function SettingsPanel({ theme, prefs, favoriteCount, bookmarkCount, recentBooks, recentSearches, onTheme, onPrefs, onResetReader, onClearStorage, onExportBackup, onImportBackup, aiEnabled, aiProvider, aiModel, onToggleAI, onProvider }: Props) {
   return (
     <section className="settings-screen">
       <div className="section-heading">
@@ -49,6 +51,11 @@ export function SettingsPanel({ theme, prefs, favoriteCount, bookmarkCount, rece
         <section className="settings-card">
           <h2>Penyimpanan lokal</h2>
           <p>{favoriteCount} favorit · {bookmarkCount} bookmark · {recentBooks.length} terakhir dibaca · {recentSearches.length} pencarian terkini</p>
+          <div className="settings-actions">
+            <Button onClick={onExportBackup}>Unduh backup logat</Button>
+            <label className="ui-button">Pulihkan backup<input type="file" accept="application/json,.json" hidden onChange={event => { const file = event.target.files?.[0]; if (file) onImportBackup(file); event.currentTarget.value = '' }} /></label>
+          </div>
+          <small>Backup hanya berpindah device jika Anda memilih file-nya secara manual.</small>
           <Button className="danger" onClick={onClearStorage}>Bersihkan preferensi UI</Button>
         </section>
         <section className="settings-card">
