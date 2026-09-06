@@ -41,7 +41,11 @@ export function BookCatalog({ books, items, authors, query, authorQuery, selecte
   }, [books, favoritesOnly])
 
   return (
-    <div className="home-screen">
+    <div className={`home-screen ${recentBooks.length ? 'returning-reader' : ''}`}>
+      {recentBooks.length > 0 && <section className="home-recent" aria-label="Terakhir dibaca">
+        <div><h2>Lanjutkan membaca</h2><p>Lanjutkan dari halaman terakhir yang Anda baca.</p></div>
+        <div className="recent-strip">{recentBooks.map(item => <Button key={item.id} onClick={() => onOpen(item)} dir="rtl" lang="ar">{item.name}{readingPages[item.id] && <small dir="ltr">Lanjutkan halaman {readingPages[item.id]}</small>}</Button>)}</div>
+      </section>}
       <section className="home-intro" aria-labelledby="home-title">
         <div>
           <span className="home-eyebrow">PERPUSTAKAAN LOKAL · LOGAT SYAMILAH</span>
@@ -54,10 +58,6 @@ export function BookCatalog({ books, items, authors, query, authorQuery, selecte
         </div>
         <div className="home-calligraphy" lang="ar" dir="rtl" aria-hidden="true">بِسْمِ اللَّهِ<br /><small>الرَّحْمَٰنِ الرَّحِيمِ</small></div>
       </section>
-      {recentBooks.length > 0 && <section className="home-recent" aria-label="Terakhir dibaca">
-        <div><h2>Terakhir dibaca</h2><p>Lanjutkan dari halaman terakhir yang Anda baca.</p></div>
-        <div className="recent-strip">{recentBooks.map(item => <Button key={item.id} onClick={() => onOpen(item)} dir="rtl" lang="ar">{item.name}{readingPages[item.id] && <small dir="ltr">Lanjutkan halaman {readingPages[item.id]}</small>}</Button>)}</div>
-      </section>}
       <div className="home-toolbar">
         <div className="home-tabs" aria-label="Pilihan koleksi">
           <Button aria-pressed={!favoritesOnly} className={!favoritesOnly ? 'selected' : ''} onClick={() => setFavoritesOnly(false)}>Daftar Kitab</Button>

@@ -140,3 +140,19 @@ it('warns before closing when browser draft storage fails', async () => {
     expect(unload.defaultPrevented).toBe(true)
   } finally { write.mockRestore(); confirm.mockRestore() }
 })
+
+it('hides annotations without deleting them and persists reading appearance', async () => {
+  vi.mocked(api.page).mockResolvedValue({ ...wordPage(), annotations: { '0': { word: 'قال', meaning: 'berkata' } } })
+  await act(async () => root.render(<App />)); await click('.book-card')
+  expect(host.querySelector('.annotated small')!.textContent).toBe('berkata')
+  const details = host.querySelector('.reader-appearance') as HTMLDetailsElement
+  expect(details.open).toBe(false)
+  await act(async () => { (host.querySelector('.reader-appearance summary') as HTMLElement).click() })
+  expect(details.open).toBe(true)
+  await click('.annotation-visibility input')
+  expect(host.querySelector('.annotated small')).toBeNull()
+  expect(JSON.parse(localStorage.getItem('logat:readerPrefs')!).showAnnotations).toBe(false)
+  expect(api.delete).not.toHaveBeenCalled()
+  await click('.annotation-visibility input')
+  expect(host.querySelector('.annotated small')!.textContent).toBe('berkata')
+})

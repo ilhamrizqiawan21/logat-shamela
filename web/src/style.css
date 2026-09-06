@@ -951,7 +951,7 @@ output {
 .annotated small {
   color: #96671f;
   direction: ltr;
-  font: 11px/1.2 'Plus Jakarta Sans', sans-serif;
+  font: var(--annotation-font-size, 13px)/1.5 'Plus Jakarta Sans', sans-serif;
   inline-size: 100%;
   overflow-wrap: anywhere;
   text-align: center;
@@ -2006,3 +2006,31 @@ output {
   .mainnav { overflow-x: auto; }
   .mainnav .ui-button { white-space: nowrap; }
 }
+
+/* Pemolesan kontrol dan tampilan bacaan */
+.reader-appearance { border: 1px solid var(--line); border-radius: var(--radius-md); margin-top: 12px; background: var(--paper); }
+.reader-appearance summary { padding: 12px 16px; cursor: pointer; color: var(--brand); font-size: 13px; font-weight: 700; }
+.reader-appearance summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--radius-md); }
+.reader-appearance .reader-toolbar { border: 0; border-top: 1px solid var(--line); border-radius: 0 0 var(--radius-md) var(--radius-md); }
+.reader-toolbar .annotation-visibility { display: flex; align-items: center; gap: 10px; }
+.annotation-visibility input { width: 18px; height: 18px; accent-color: var(--brand); }
+.settings-card .reader-toolbar { grid-template-columns: 1fr; padding: 0; border: 0; background: transparent; }
+.settings-card .reader-toolbar .segmented { grid-column: auto; }
+.settings-card .settings-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.settings-card select { font: inherit; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--panel); color: var(--ink); padding: 10px; }
+.settings-card .ai-switch { display: flex; align-items: center; gap: 10px; }
+.returning-reader .home-recent { margin: 0 0 24px; }
+.returning-reader .home-intro { grid-template-columns: 1fr; padding: 22px 28px; }
+.returning-reader .home-calligraphy { display: none; }
+.returning-reader .home-intro h1 { font-size: 24px; margin: 8px 0; }
+.returning-reader .home-search { margin-top: 14px; max-width: none; }
+.reader-screen .word:hover { transform: none; }
+:root { --action-bg: var(--brand-2); --action-ink: #fff; }
+:root .ui-button.primary,
+:root .segmented .ui-button.active,
+:root .ai-modes .ui-button.active { background: var(--action-bg); color: var(--action-ink); border-color: var(--action-bg); }
+.settings-actions .ui-button,
+.ai-panel-head .ui-button,
+.ai-actions .ui-button,
+.ai-modes .ui-button { border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--panel); color: var(--ink); padding: 10px 12px; }
+.ai-modes .ui-button { padding: 8px 4px; }

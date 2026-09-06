@@ -25,6 +25,12 @@ Untuk Gemini, gunakan `.env` di folder utama proyek. Isi `GEMINI_API_KEY` dan pa
 
 Pembaca mengingat halaman terakhir dan posisi gulir per halaman di browser yang sama. Nomor halaman diterapkan dengan Enter atau tombol **Buka**. Cakupan **Cari dalam kitab** terpisah dari filter beranda.
 
+### Tampilan bacaan
+
+Buka **Tampilan bacaan** pada pembaca untuk mengatur ukuran teks, jarak baris, lebar bacaan, font, dan ukuran logat. **Tampilkan logat** menyembunyikan atau menampilkan arti tanpa menghapus anotasi. Pengaturan yang sama tersedia di **Pengaturan → Pembaca** dan disimpan pada browser ini.
+
+Beranda mendahulukan **Lanjutkan membaca** ketika riwayat kitab tersedia. Tombol AI menunjukkan status nonaktif jika asisten belum diaktifkan; aktifkan melalui **Pengaturan**. Panel analisis menampilkan penyedia/model yang digunakan.
+
 ### Draf logat dan bookmark
 
 Draf arti disimpan otomatis di browser per kata dan dipulihkan ketika kata yang sama dibuka lagi, termasuk setelah memuat ulang aplikasi. Draf belum masuk database atau backup logat sebelum menekan **Simpan**. Jika penyimpanan browser gagal, editor menampilkan peringatan dan meminta konfirmasi sebelum ditutup.

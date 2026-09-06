@@ -50,7 +50,7 @@ export function AppShell({ view, theme, onView, onTheme, focusMode = false, chil
             <Button key={id} className={view === id ? 'active' : ''} aria-current={view === id ? 'page' : undefined} onClick={() => onView(id)}>{label}</Button>
           ))}
         </nav>
-        <Button className="theme-toggle" onClick={() => onTheme(nextTheme)} aria-label={`Tema ${theme}`}>
+        <Button className="theme-toggle" onClick={() => onTheme(nextTheme)} aria-label={`Tema: ${{ system: 'Sistem', light: 'Terang', dark: 'Gelap' }[theme]}. Ganti ke ${{ system: 'Sistem', light: 'Terang', dark: 'Gelap' }[nextTheme]}`} title={`Tema: ${{ system: 'Sistem', light: 'Terang', dark: 'Gelap' }[theme]}`}>
           {theme === 'dark' ? '☾' : theme === 'light' ? '☼' : '◐'}
         </Button>
       </header>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { Book, Bookmark, Chapter, Page, Token } from '../types'
+import { ReaderAppearance } from './ReaderAppearance'
 import { Button, ErrorState, Skeleton, StateCard, TextField } from './ui'
 
 type Status = 'idle' | 'loading' | 'error'
@@ -10,6 +11,8 @@ export type ReaderPrefs = {
   lineHeight: number
   columnWidth: number
   fontFamily: 'amiri' | 'naskh'
+  annotationSize?: number
+  showAnnotations?: boolean
 }
 
 type TreeChapter = Chapter & { children: TreeChapter[] }
@@ -158,12 +161,13 @@ type Props = {
   onFocusMode: (value: boolean) => void
   onToggleBookmark: () => void
   onAskAI: () => void
+  aiEnabled: boolean
   onOpenBookmark: (bookmark: Bookmark) => void
   onManageBookmarks: () => void
   onEditToken: (token: Token) => void
 }
 
-export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapterQuery, status, error, focusMode, prefs, onPrefs, onChapterQuery, onChooseBook, onPage, onRetry, onFocusMode, onToggleBookmark, onAskAI, onOpenBookmark, onManageBookmarks, onEditToken }: Props) {
+export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapterQuery, status, error, focusMode, prefs, onPrefs, onChapterQuery, onChooseBook, onPage, onRetry, onFocusMode, onToggleBookmark, onAskAI, aiEnabled, onOpenBookmark, onManageBookmarks, onEditToken }: Props) {
   const [indexOpen, setIndexOpen] = useState(false)
   const [pageInput, setPageInput] = useState(String(pageNo))
   useEffect(() => setPageInput(String(pageNo)), [book?.id, pageNo])
@@ -198,6 +202,7 @@ export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapter
   }
 
   const readerStyle = {
+    '--annotation-font-size': `${prefs.annotationSize ?? 13}px`,
     '--reader-font-size': `${prefs.fontSize}px`,
     '--reader-line-height': prefs.lineHeight,
     '--reader-width': `${prefs.columnWidth}px`,
@@ -241,7 +246,7 @@ export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapter
             <Button disabled={status !== 'idle' || !page} className={`bookmark-page ${page?.bookmarked ? 'active' : ''}`} onClick={onToggleBookmark} aria-label={page?.bookmarked ? 'Hapus bookmark halaman' : 'Bookmark halaman'}>
               {page?.bookmarked ? '★ Bookmark' : '☆ Bookmark'}
             </Button>
-            <Button disabled={status !== 'idle' || !page} className="ai-trigger" onClick={onAskAI}>Asisten AI</Button>
+            <Button disabled={status !== 'idle' || !page || !aiEnabled} title={aiEnabled ? 'Buka asisten AI' : 'Aktifkan AI di Pengaturan'} className="ai-trigger" onClick={onAskAI}>{aiEnabled ? 'Asisten AI' : 'AI nonaktif'}</Button>
             <Button className="focus-toggle" onClick={() => onFocusMode(!focusMode)}>{focusMode ? 'Tampilkan panel' : 'Mode fokus'}</Button>
           </div>
         </div>
@@ -255,15 +260,10 @@ export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapter
           <Button disabled={status === 'loading'} onClick={() => onPage(pageNo + 1)}>Berikutnya →</Button>
         </nav>
 
-        <div className="reader-toolbar" aria-label="Pengaturan tampilan reader">
-          <label><span>Ukuran <output>{prefs.fontSize}px</output></span><input aria-label="Ukuran huruf" type="range" min="24" max="44" value={prefs.fontSize} onChange={event => onPrefs({ ...prefs, fontSize: Number(event.target.value) })} /></label>
-          <label><span>Spasi <output>{prefs.lineHeight.toFixed(2)}</output></span><input aria-label="Jarak antarbaris" type="range" min="1.8" max="2.7" step="0.05" value={prefs.lineHeight} onChange={event => onPrefs({ ...prefs, lineHeight: Number(event.target.value) })} /></label>
-          <label><span>Lebar <output>{prefs.columnWidth}px</output></span><input aria-label="Lebar kolom bacaan" type="range" min="720" max="1240" step="20" value={prefs.columnWidth} onChange={event => onPrefs({ ...prefs, columnWidth: Number(event.target.value) })} /></label>
-          <div className="segmented" role="group" aria-label="Font Arab">
-            <Button className={prefs.fontFamily === 'amiri' ? 'active' : ''} onClick={() => onPrefs({ ...prefs, fontFamily: 'amiri' })}>Amiri</Button>
-            <Button className={prefs.fontFamily === 'naskh' ? 'active' : ''} onClick={() => onPrefs({ ...prefs, fontFamily: 'naskh' })}>Naskh</Button>
-          </div>
-        </div>
+        <details className="reader-appearance">
+          <summary>Tampilan bacaan</summary>
+          <ReaderAppearance prefs={prefs} onPrefs={onPrefs} />
+        </details>
 
         <p className="meta">Jilid {page?.part ?? '-'} · Halaman cetak {page?.printed_page ?? '-'}</p>
 
@@ -271,14 +271,14 @@ export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapter
           {status === 'loading' && <Skeleton lines={12} />}
           {status === 'error' && <ErrorState message={error} retry={onRetry} />}
           {status === 'idle' && (
-            <article dir="rtl" aria-label="Halaman kitab">
+            <article dir="rtl" lang="ar" aria-label="Halaman kitab">
               {page?.tokens.map((token, index) => {
                 const annotation = token.index === null ? undefined : page.annotations[String(token.index)]
                 if (!token.is_word) return <span key={index}>{token.text}</span>
                 return (
-                  <Button key={index} className={annotation ? 'word annotated' : 'word'} onClick={() => onEditToken(token)}>
+                  <Button key={index} className={annotation && (prefs.showAnnotations ?? true) ? 'word annotated' : 'word'} onClick={() => onEditToken(token)}>
                     <span>{token.text}</span>
-                    {annotation && <small>{annotation.meaning}</small>}
+                    {annotation && (prefs.showAnnotations ?? true) && <small lang="id">{annotation.meaning}</small>}
                     <em className="word-popover" dir="rtl">
                       {token.prev_word} <b>{token.text}</b> {token.next_word}
                     </em>

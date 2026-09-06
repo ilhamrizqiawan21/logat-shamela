@@ -15,9 +15,10 @@ type Props = {
   onDelete: () => Promise<void>
   onClose: () => void
   onAskAI: () => void
+  aiEnabled: boolean
 }
 
-export function AnnotationEditor({ token, meaning, suggestions, suggestionStatus, hasMeaning = false, hasNext, draftStatus, onMeaning, onSave, onDelete, onClose, onAskAI }: Props) {
+export function AnnotationEditor({ token, meaning, suggestions, suggestionStatus, hasMeaning = false, hasNext, draftStatus, onMeaning, onSave, onDelete, onClose, onAskAI, aiEnabled }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
   const pending = useRef(false)
@@ -77,7 +78,7 @@ export function AnnotationEditor({ token, meaning, suggestions, suggestionStatus
       <div className="dialog-actions">
         <Button className="primary" disabled={busy} onClick={() => void run(() => onSave())}>{busy ? 'Memproses…' : 'Simpan'}</Button>
         <Button disabled={busy || !hasNext} onClick={() => void run(() => onSave(true))}>Simpan & kata berikutnya</Button>
-        <Button disabled={busy} onClick={onAskAI}>Analisis AI</Button>
+        <Button disabled={busy || !aiEnabled} title={aiEnabled ? undefined : 'Aktifkan AI di Pengaturan'} onClick={onAskAI}>{aiEnabled ? 'Analisis AI' : 'AI nonaktif'}</Button>
         {hasMeaning && <Button className="danger" disabled={busy} onClick={() => void run(onDelete)}>Hapus</Button>}
         <Button disabled={busy} onClick={onClose}>Tutup</Button>
       </div>

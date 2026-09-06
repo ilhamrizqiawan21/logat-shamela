@@ -17,7 +17,7 @@ type View = 'books' | 'reader' | 'search' | 'settings' | 'bookmarks'
 type Status = 'idle' | 'loading' | 'error'
 type Part = { part: number; page_id: number }
 type Theme = 'system' | 'light' | 'dark'
-const defaultReaderPrefs: ReaderPrefs = { fontSize: 32, lineHeight: 2.25, columnWidth: 980, fontFamily: 'amiri' }
+const defaultReaderPrefs: ReaderPrefs = { fontSize: 32, lineHeight: 2.25, columnWidth: 980, fontFamily: 'amiri', annotationSize: 13, showAnnotations: true }
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Terjadi kesalahan'
 const readStored = <T,>(key: string, fallback: T): T => {
@@ -404,7 +404,7 @@ export function App() {
     setRecentSearches([])
     setReaderPrefs(defaultReaderPrefs)
     setTheme('system')
-    setToast('Preferensi UI dibersihkan')
+    setToast('Preferensi aplikasi diatur ulang')
   }
 
   const downloadBackup = async () => {
@@ -478,6 +478,7 @@ export function App() {
           onRetry={() => book && loadPage(book, pageNo)}
           onFocusMode={setFocusMode}
           onToggleBookmark={togglePageBookmark}
+          aiEnabled={aiEnabled}
           onAskAI={() => setAiOpen(true)}
           onOpenBookmark={bookmark => openBookById(bookmark.book_id, bookmark.page_id)}
           onManageBookmarks={() => setView('bookmarks')}
@@ -499,7 +500,7 @@ export function App() {
           onPrefs={setReaderPrefs}
           onResetReader={() => {
             setReaderPrefs(defaultReaderPrefs)
-            setToast('Layout reader direset')
+            setToast('Tampilan bacaan diatur ulang')
           }}
           onClearStorage={clearUiStorage}
           onExportBackup={downloadBackup}
@@ -550,10 +551,11 @@ export function App() {
         onSave={saveAnnotation}
         onDelete={deleteAnnotation}
         onClose={closeEditor}
+        aiEnabled={aiEnabled}
         onAskAI={() => setAiOpen(true)}
       />}
 
-      {aiOpen && book && page && <AITutorPanel book={book} page={page} token={selectedToken} onClose={() => setAiOpen(false)} onDraft={draft => { updateMeaning(draft); setAiOpen(false); if (!selectedToken) setToast('Pilih kata untuk memakai draft logat') }} />}
+      {aiOpen && book && page && <AITutorPanel enabled={aiEnabled} provider={aiProvider} model={aiModel} key={`${book.id}:${page.page_id}:${selectedToken?.index ?? "page"}:${aiProvider}`} book={book} page={page} token={selectedToken} onClose={() => setAiOpen(false)} onDraft={draft => { updateMeaning(draft); setAiOpen(false); if (!selectedToken) setToast('Pilih kata untuk memakai draf logat') }} />}
 
       {toast && <div className="toast" role="status">{toast}</div>}
     </AppShell>

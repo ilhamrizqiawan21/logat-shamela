@@ -1,3 +1,5 @@
+import { useRef } from 'react'
+import { ReaderAppearance } from './ReaderAppearance'
 import type { Book } from '../types'
 import type { ReaderPrefs } from './Reader'
 import { Button } from './ui'
@@ -25,6 +27,7 @@ type Props = {
 }
 
 export function SettingsPanel({ theme, prefs, favoriteCount, bookmarkCount, recentBooks, recentSearches, onTheme, onPrefs, onResetReader, onClearStorage, onExportBackup, onImportBackup, aiEnabled, aiProvider, aiModel, onToggleAI, onProvider }: Props) {
+  const backupInput = useRef<HTMLInputElement>(null)
   return (
     <section className="settings-screen">
       <div className="section-heading">
@@ -36,32 +39,30 @@ export function SettingsPanel({ theme, prefs, favoriteCount, bookmarkCount, rece
         <section className="settings-card">
           <h2>Tema</h2>
           <div className="segmented wide">
-            {(['system', 'light', 'dark'] as const).map(item => <Button key={item} className={theme === item ? 'active' : ''} onClick={() => onTheme(item)}>{item}</Button>)}
+            {(['system', 'light', 'dark'] as const).map(item => <Button key={item} aria-pressed={theme === item} className={theme === item ? 'active' : ''} onClick={() => onTheme(item)}>{{ system: 'Sistem', light: 'Terang', dark: 'Gelap' }[item]}</Button>)}
           </div>
         </section>
 
         <section className="settings-card">
-          <h2>Reader</h2>
-          <label><span>Ukuran <output>{prefs.fontSize}px</output></span><input aria-label="Ukuran huruf" type="range" min="24" max="44" value={prefs.fontSize} onChange={event => onPrefs({ ...prefs, fontSize: Number(event.target.value) })} /></label>
-          <label><span>Spasi <output>{prefs.lineHeight.toFixed(2)}</output></span><input aria-label="Jarak antarbaris" type="range" min="1.8" max="2.7" step="0.05" value={prefs.lineHeight} onChange={event => onPrefs({ ...prefs, lineHeight: Number(event.target.value) })} /></label>
-          <label><span>Lebar <output>{prefs.columnWidth}px</output></span><input aria-label="Lebar kolom bacaan" type="range" min="720" max="1240" step="20" value={prefs.columnWidth} onChange={event => onPrefs({ ...prefs, columnWidth: Number(event.target.value) })} /></label>
-          <Button onClick={onResetReader}>Reset layout reader</Button>
+          <h2>Pembaca</h2>
+          <ReaderAppearance prefs={prefs} onPrefs={onPrefs} />
+          <Button onClick={onResetReader}>Atur ulang tampilan bacaan</Button>
         </section>
 
         <section className="settings-card">
           <h2>Penyimpanan lokal</h2>
           <p>{favoriteCount} favorit · {bookmarkCount} bookmark · {recentBooks.length} terakhir dibaca · {recentSearches.length} pencarian terkini</p>
           <div className="settings-actions">
-            <Button onClick={onExportBackup}>Unduh backup logat</Button>
-            <label className="ui-button">Pulihkan backup<input type="file" accept="application/json,.json" hidden onChange={event => { const file = event.target.files?.[0]; if (file) onImportBackup(file); event.currentTarget.value = '' }} /></label>
+            <Button onClick={onExportBackup}>Unduh cadangan logat</Button>
+            <Button onClick={() => backupInput.current?.click()}>Pulihkan cadangan</Button><input ref={backupInput} aria-label="Berkas cadangan logat" type="file" accept="application/json,.json" hidden onChange={event => { const file = event.target.files?.[0]; if (file) onImportBackup(file); event.currentTarget.value = '' }} />
           </div>
-          <small>Backup hanya berpindah device jika Anda memilih file-nya secara manual.</small>
-          <Button className="danger" onClick={onClearStorage}>Bersihkan preferensi UI</Button>
+          <small>Cadangan dipindahkan ke perangkat lain dengan memilih berkas secara manual.</small>
+          <Button className="danger" onClick={onClearStorage}>Atur ulang preferensi aplikasi</Button>
         </section>
         <section className="settings-card">
           <h2>Asisten AI</h2>
-          <p>{aiProvider} · {aiModel}</p>
-          <label>Provider<select value={aiProvider} onChange={event => onProvider(event.target.value)}><option value="gemini">Gemini</option><option value="ollama">Ollama lokal</option></select></label>
+          <p>{aiProvider ? `${aiProvider === 'ollama' ? 'Ollama lokal' : aiProvider === 'gemini' ? 'Gemini' : aiProvider} · ${aiModel}` : 'Status AI belum tersedia'}</p>
+          <label>Penyedia AI<select value={aiProvider} onChange={event => onProvider(event.target.value)}><option value="gemini">Gemini</option><option value="ollama">Ollama lokal</option></select></label>
           <label className="ai-switch"><input type="checkbox" checked={aiEnabled} onChange={event => onToggleAI(event.target.checked)} /> <span>{aiEnabled ? 'AI aktif' : 'AI nonaktif'}</span></label>
         </section>
       </div>
