@@ -72,12 +72,16 @@ export function AnnotationEditor({ token, meaning, suggestions, suggestionStatus
         {suggestionStatus === 'error' && <p>Saran belum bisa dimuat.</p>}
         {suggestions.length > 0 && <div className="suggestion-chips">{suggestions.map(item => <Button disabled={busy} key={item} onClick={() => onMeaning(item)}>{item}</Button>)}</div>}
       </div>
-      <label className="field-label"><span>Arti / logat</span><TextField data-editor-input value={meaning} onChange={event => onMeaning(event.target.value)} placeholder="Tulis arti/logat..." disabled={busy} /></label>
-      <p className="editor-note" role="status">{draftStatus === 'saved' ? 'Draf disimpan di browser ini. Tekan Simpan untuk menyimpan ke logat.' : draftStatus === 'error' ? 'Draf belum bisa disimpan di browser. Simpan logat sebelum menutup.' : 'Ctrl+Enter: simpan · Ctrl+Shift+Enter: simpan & lanjut'}</p>
+      <label className="field-label"><span>Arti / logat</span><TextField data-editor-input value={meaning} onChange={event => onMeaning(event.target.value)} onKeyDown={event => {
+        if (event.key === 'Tab' && !event.shiftKey && hasNext && !busy) {
+          event.preventDefault()
+          void run(() => onSave(true))
+        }
+      }} placeholder="Tulis arti/logat..." disabled={busy} /></label>
+      <p className="editor-note" role="status">{draftStatus === 'saved' ? 'Draf disimpan di browser ini. Tekan Tab untuk simpan & pindah ke kata berikutnya.' : draftStatus === 'error' ? 'Draf belum bisa disimpan di browser. Simpan logat sebelum menutup.' : 'Tab: simpan & kata berikutnya · Ctrl+Enter: simpan'}</p>
       {error && <p className="editor-error" role="alert">{error}</p>}
       <div className="dialog-actions">
         <Button className="primary" disabled={busy} onClick={() => void run(() => onSave())}>{busy ? 'Memproses…' : 'Simpan'}</Button>
-        <Button disabled={busy || !hasNext} onClick={() => void run(() => onSave(true))}>Simpan & kata berikutnya</Button>
         <Button disabled={busy || !aiEnabled} title={aiEnabled ? undefined : 'Aktifkan AI di Pengaturan'} onClick={onAskAI}>{aiEnabled ? 'Analisis AI' : 'AI nonaktif'}</Button>
         {hasMeaning && <Button className="danger" disabled={busy} onClick={() => void run(onDelete)}>Hapus</Button>}
         <Button disabled={busy} onClick={onClose}>Tutup</Button>
