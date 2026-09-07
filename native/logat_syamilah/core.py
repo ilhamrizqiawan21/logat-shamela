@@ -71,21 +71,21 @@ class CatalogRepository:
                  FROM book b JOIN category c ON c.category_id=b.book_category
                  LEFT JOIN author_book ab ON ab.book_id=b.book_id LEFT JOIN author a ON a.author_id=ab.author_id
                  WHERE """ + " AND ".join(clauses) + " GROUP BY b.book_id ORDER BY b.book_name"
-        with self.connect() as db: return [self._book(r) for r in db.execute(sql, args)]
+        with self._connect() as db: return [self._book(r) for r in db.execute(sql, args)]
 
     def categories(self, query=""):
         sql = """SELECT c.category_id,c.category_name,COUNT(b.book_id) FROM category c JOIN book b ON b.book_category=c.category_id AND b.major_ondisk>0"""
         args = []
         if query.strip(): sql += " WHERE c.category_name LIKE ?"; args.append(f"%{query.strip()}%")
         sql += " GROUP BY c.category_id ORDER BY c.category_order,c.category_name"
-        with self.connect() as db: return [CatalogItem(*r) for r in db.execute(sql, args)]
+        with self._connect() as db: return [CatalogItem(*r) for r in db.execute(sql, args)]
 
     def authors(self, query=""):
         sql = """SELECT a.author_id,a.author_name,COUNT(DISTINCT b.book_id) FROM author a JOIN author_book ab ON ab.author_id=a.author_id JOIN book b ON b.book_id=ab.book_id AND b.major_ondisk>0"""
         args = []
         if query.strip(): sql += " WHERE a.author_name LIKE ?"; args.append(f"%{query.strip()}%")
         sql += " GROUP BY a.author_id ORDER BY a.alpha,a.author_name"
-        with self.connect() as db: return [CatalogItem(*r) for r in db.execute(sql, args)]
+        with self._connect() as db: return [CatalogItem(*r) for r in db.execute(sql, args)]
 
 
 class ShamelaMarkupParser(HTMLParser):

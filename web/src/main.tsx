@@ -27,6 +27,9 @@ const readStored = <T,>(key: string, fallback: T): T => {
 const writeStored = (key: string, value: unknown) => {
   try { if (typeof localStorage !== 'undefined') localStorage.setItem(key, JSON.stringify(value)) } catch { /* Reading remains available when storage is full or blocked. */ }
 }
+const validTheme = (value: unknown): Theme => value === "light" || value === "dark" || value === "system" ? value : "system"
+const validFavoriteIds = (value: unknown): number[] => Array.isArray(value) ? value.filter(item => Number.isSafeInteger(item) && item > 0) as number[] : []
+const validRecentBooks = (value: unknown): Book[] => Array.isArray(value) ? value.filter(item => item && typeof item === "object" && Number.isSafeInteger((item as Book).id) && typeof (item as Book).name === "string") as Book[] : []
 
 export function App() {
   const [view, setView] = useState<View>('books')
@@ -89,7 +92,7 @@ export function App() {
   const [suggestionStatus, setSuggestionStatus] = useState<Status>('idle')
   const [toast, setToast] = useState('')
   const [focusMode, setFocusMode] = useState(false)
-  const [theme, setTheme] = useState<Theme>(() => readStored('logat:theme', 'system'))
+  const [theme, setTheme] = useState<Theme>(() => validTheme(readStored<unknown>('logat:theme', 'system')))
   const [readerPrefs, setReaderPrefs] = useState<ReaderPrefs>(() => readStored('logat:readerPrefs', defaultReaderPrefs))
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [debouncedAuthorQuery, setDebouncedAuthorQuery] = useState('')
@@ -100,8 +103,8 @@ export function App() {
   const [catalogError, setCatalogError] = useState('')
   const [readerError, setReaderError] = useState('')
   const [searchError, setSearchError] = useState('')
-  const [favoriteBookIds, setFavoriteBookIds] = useState<number[]>(() => readStored('logat:favorites', []))
-  const [recentBooks, setRecentBooks] = useState<Book[]>(() => readStored('logat:recentBooks', []))
+  const [favoriteBookIds, setFavoriteBookIds] = useState<number[]>(() => validFavoriteIds(readStored<unknown>('logat:favorites', [])))
+  const [recentBooks, setRecentBooks] = useState<Book[]>(() => validRecentBooks(readStored<unknown>('logat:recentBooks', [])))
   const [recentSearches, setRecentSearches] = useState<string[]>(() => readStored('logat:recentSearches', []))
 
   const catalogRequest = useRef(0)
@@ -326,8 +329,12 @@ export function App() {
 
   useEffect(() => {
     const root = document.documentElement
-    root.dataset.theme = theme
+    const media = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: dark)') : undefined
+    const applyTheme = () => { root.dataset.theme = theme === 'system' ? (media?.matches ? 'dark' : 'light') : theme }
+    applyTheme()
+    media?.addEventListener('change', applyTheme)
     writeStored('logat:theme', theme)
+    return () => media?.removeEventListener('change', applyTheme)
   }, [theme])
 
   useEffect(() => {
@@ -362,7 +369,7 @@ export function App() {
   useEffect(() => { aiStatus().then(status => { setAiEnabled(status.enabled); setAiProvider(status.provider); setAiModel(status.model) }).catch(() => {}) }, [])
 
   useEffect(() => {
-    api.health().then(() => setToast('Pembaca Syamilah siap')).catch(() => setToast('Koneksi pembaca Syamilah bermasalah'))
+    api.health().catch(() => setToast('Koneksi pembaca Syamilah bermasalah'))
     loadBookmarks()
   }, [])
 

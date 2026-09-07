@@ -78,7 +78,7 @@ function ReaderIndex({ chapters, parts, bookmarks, chapterQuery, currentPage, is
   }
 
   return (
-    <aside className={`reader-index ${isOpen ? 'mobile-open' : ''}`} aria-label="Indeks kitab">
+    <aside className={`reader-index ${isOpen ? 'mobile-open' : ''}`} aria-label="Indeks kitab" role={isOpen ? 'dialog' : undefined} aria-modal={isOpen || undefined}>
       <div className="reader-index-head">
         <div>
           <span>Indeks</span>
@@ -169,9 +169,54 @@ type Props = {
 
 export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapterQuery, status, error, focusMode, prefs, onPrefs, onChapterQuery, onChooseBook, onPage, onRetry, onFocusMode, onToggleBookmark, onAskAI, aiEnabled, onOpenBookmark, onManageBookmarks, onEditToken }: Props) {
   const [indexOpen, setIndexOpen] = useState(false)
+  const [activeWord, setActiveWord] = useState(0)
   const [pageInput, setPageInput] = useState(String(pageNo))
   useEffect(() => setPageInput(String(pageNo)), [book?.id, pageNo])
   const readerTop = useRef<HTMLElement>(null)
+  const indexReturnFocus = useRef<HTMLElement | null>(null)
+
+  const closeIndex = () => {
+    setIndexOpen(false)
+    window.setTimeout(() => indexReturnFocus.current?.focus(), 0)
+  }
+
+  const openIndex = (target: HTMLElement) => {
+    indexReturnFocus.current = target
+    setIndexOpen(true)
+  }
+
+  useEffect(() => {
+    if (!indexOpen) return
+    const panel = document.querySelector<HTMLElement>('.reader-index.mobile-open')
+    const focusable = () => Array.from(panel?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), [tabindex="0"]') ?? [])
+    focusable()[0]?.focus()
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); closeIndex(); return }
+      if (event.key !== 'Tab') return
+      const items = focusable()
+      if (!items.length) return
+      const first = items[0]
+      const last = items[items.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [indexOpen])
+
+  useEffect(() => {
+    const firstWord = page?.tokens.findIndex(token => token.is_word) ?? -1
+    setActiveWord(Math.max(0, firstWord))
+  }, [page?.book_id, page?.page_id])
+
+  const moveWordFocus = (current: number, direction: -1 | 1) => {
+    if (!page) return
+    let next = current + direction
+    while (next >= 0 && next < page.tokens.length && !page.tokens[next].is_word) next += direction
+    if (next < 0 || next >= page.tokens.length) return
+    setActiveWord(next)
+    window.requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-word-position="' + next + '"]')?.focus())
+  }
 
   useEffect(() => {
     if (!book || status !== 'idle' || page?.page_id !== pageNo || page.book_id !== book.id) return
@@ -219,7 +264,7 @@ export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapter
           chapterQuery={chapterQuery}
           currentPage={pageNo}
           isOpen={indexOpen}
-          onClose={() => setIndexOpen(false)}
+          onClose={closeIndex}
           onChapterQuery={onChapterQuery}
           onPage={onPage}
           onOpenBookmark={onOpenBookmark}
@@ -231,8 +276,8 @@ export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapter
         role="button"
         tabIndex={indexOpen ? 0 : -1}
         aria-label="Tutup indeks"
-        onClick={() => setIndexOpen(false)}
-        onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setIndexOpen(false) } }}
+        onClick={closeIndex}
+        onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); closeIndex() } }}
       />
 
       <section className="reader-screen" ref={readerTop}>
@@ -242,7 +287,7 @@ export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapter
             <p>{book.authors}</p>
           </div>
           <div className="title-actions">
-            <Button className="index-trigger" onClick={() => setIndexOpen(true)}>Indeks</Button>
+            <Button className="index-trigger" onClick={event => openIndex(event.currentTarget)}>Indeks</Button>
             <Button disabled={status !== 'idle' || !page} className={`bookmark-page ${page?.bookmarked ? 'active' : ''}`} onClick={onToggleBookmark} aria-label={page?.bookmarked ? 'Hapus bookmark halaman' : 'Bookmark halaman'}>
               {page?.bookmarked ? '★ Bookmark' : '☆ Bookmark'}
             </Button>
@@ -276,7 +321,7 @@ export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapter
                 const annotation = token.index === null ? undefined : page.annotations[String(token.index)]
                 if (!token.is_word) return <span key={index}>{token.text}</span>
                 return (
-                  <Button key={index} className={annotation && (prefs.showAnnotations ?? true) ? 'word annotated' : 'word'} onClick={() => onEditToken(token)}>
+                  <Button key={index} data-word-position={index} tabIndex={activeWord === index ? 0 : -1} className={annotation && (prefs.showAnnotations ?? true) ? 'word annotated' : 'word'} onFocus={() => setActiveWord(index)} onKeyDown={event => { if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') { event.preventDefault(); moveWordFocus(index, event.key === 'ArrowRight' ? -1 : 1) } }} onClick={() => onEditToken(token)}>
                     <span>{token.text}</span>
                     {annotation && (prefs.showAnnotations ?? true) && <small lang="id">{annotation.meaning}</small>}
                     <em className="word-popover" dir="rtl">

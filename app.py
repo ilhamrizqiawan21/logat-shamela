@@ -154,8 +154,10 @@ def create_app(service: ReaderService | None = None, ai_service: AIService | Non
 
     @api.get("/api/books")
     def books(q: str = "", category: int | None = None, author: int | None = None):
-        return [b.__dict__ | {"category": b.category_name} for b in svc().reader.books(q, category, author)]
-
+        try:
+            return [b.__dict__ | {"category": b.category_name} for b in svc().reader.books(q, category, author)]
+        except sqlite3.Error as exc:
+            raise HTTPException(503, "Database katalog tidak tersedia") from exc
     @api.get("/api/books/{book_id}")
     def book(book_id: int):
         result = svc().book(book_id)
@@ -163,11 +165,17 @@ def create_app(service: ReaderService | None = None, ai_service: AIService | Non
         return result
 
     @api.get("/api/categories")
-    def categories(q: str = ""): return [x.__dict__ for x in svc().reader.categories(q)]
-
+    def categories(q: str = ""):
+        try:
+            return [x.__dict__ for x in svc().reader.categories(q)]
+        except sqlite3.Error as exc:
+            raise HTTPException(503, "Database katalog tidak tersedia") from exc
     @api.get("/api/authors")
-    def authors(q: str = ""): return [x.__dict__ for x in svc().reader.authors(q)]
-
+    def authors(q: str = ""):
+        try:
+            return [x.__dict__ for x in svc().reader.authors(q)]
+        except sqlite3.Error as exc:
+            raise HTTPException(503, "Database katalog tidak tersedia") from exc
     @api.get("/api/page")
     def page(book_id: int, page_id: int):
         try: return svc().page(book_id, page_id)

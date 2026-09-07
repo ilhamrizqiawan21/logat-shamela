@@ -1,24 +1,22 @@
-@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-
 :root {
-  color: #1d302a;
-  background: #edf1ee;
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-  --ink: #1d302a;
-  --muted: #5f6f66;
-  --subtle: #77857d;
-  --paper: #fffdf8;
-  --canvas: #edf1ee;
-  --panel: #f7f5ee;
-  --line: #dbe3db;
-  --soft-line: #edf0eb;
-  --brand: #176151;
-  --brand-2: #0f463b;
+  color: #202522;
+  background: #fafaf7;
+  font-family: 'Noto Sans', 'Segoe UI', system-ui, sans-serif;
+  --ink: #202522;
+  --muted: #5f6a63;
+  --subtle: #77817a;
+  --paper: #ffffff;
+  --canvas: #fafaf7;
+  --panel: #f4f8f5;
+  --line: #dde5df;
+  --soft-line: #edf2ee;
+  --brand: #176b4d;
+  --brand-2: #12563e;
   --accent: #b85c38;
   --gold: #b68232;
   --danger: #a43d32;
-  --focus: #17615124;
-  --shadow: 0 16px 42px #243b3014;
+  --focus: #176b4d24;
+  --shadow: 0 16px 42px #243b300f;
   --shadow-strong: 0 24px 72px #142b2380;
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -77,9 +75,7 @@
 body {
   min-height: 100vh;
   margin: 0;
-  background:
-    radial-gradient(circle at 80% 0%, #dfeee7 0, transparent 28%),
-    linear-gradient(180deg, #f4f6f2 0, var(--canvas) 210px);
+  background: var(--canvas);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -196,7 +192,7 @@ header {
   height: 70px;
   padding: 0 max(24px, 5vw);
   border-bottom: 1px solid var(--line);
-  background: #fffdfbf2;
+  background: #fffffff2;
   backdrop-filter: blur(14px);
 }
 
@@ -224,7 +220,7 @@ header {
   background: linear-gradient(145deg, var(--brand), var(--brand-2));
   box-shadow: 0 6px 14px #1761513d;
   color: #fff;
-  font: 27px/1 Amiri, serif;
+  font: 27px/1 'Noto Naskh Arabic', Amiri, serif;
 }
 
 .brand span {
@@ -259,9 +255,9 @@ header {
 }
 
 .mainnav .ui-button.active {
-  color: var(--accent);
+  color: var(--brand);
   font-weight: 700;
-  box-shadow: inset 0 -3px var(--accent);
+  box-shadow: inset 0 -3px var(--brand);
 }
 
 .theme-toggle {
@@ -400,7 +396,7 @@ header {
 }
 
 .section-heading span {
-  color: var(--accent);
+  color: var(--brand);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: .04em;
@@ -409,7 +405,7 @@ header {
 
 .section-heading h1 {
   margin: 4px 0 0;
-  color: var(--ink);
+  color: var(--brand);
   font-size: clamp(24px, 3vw, 32px);
   line-height: 1.15;
 }
@@ -547,7 +543,7 @@ header {
 
 .book-card b {
   display: block;
-  font: 700 19px/1.45 Amiri, serif;
+  font: 700 19px/1.45 'Noto Naskh Arabic', Amiri, serif;
 }
 
 .book-card small {
@@ -595,7 +591,7 @@ header {
 }
 
 .reader-index-head span {
-  color: var(--accent);
+  color: var(--brand);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: .04em;
@@ -604,6 +600,7 @@ header {
 
 .reader-index-head h2 {
   margin: 2px 0 0;
+  color: var(--brand);
   font-size: 20px;
 }
 
@@ -653,9 +650,11 @@ header {
   align-items: start;
   justify-content: space-between;
   gap: 18px;
+  border: 1px solid var(--line);
+  border-bottom: 0;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  background: linear-gradient(135deg, var(--brand-2), var(--brand));
-  color: #fff;
+  background: var(--paper);
+  color: var(--ink);
   padding: 30px 34px;
   text-align: right;
 }
@@ -668,20 +667,21 @@ header {
 
 .reader-title h1 {
   margin: 0;
-  font: 700 34px/1.35 Amiri, serif;
+  color: var(--brand);
+  font: 700 34px/1.35 'Noto Naskh Arabic', Amiri, serif;
 }
 
 .reader-title p {
   margin: 6px 0 0;
-  color: #d8e9de;
+  color: var(--muted);
 }
 
 .index-trigger {
   flex: 0 0 auto;
-  border: 1px solid #ffffff55;
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: #ffffff12;
-  color: #fff;
+  background: var(--panel);
+  color: var(--brand);
   padding: 9px 12px;
 }
 
@@ -691,19 +691,19 @@ header {
 
 .focus-toggle {
   flex: 0 0 auto;
-  border: 1px solid #ffffff55;
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: #ffffff18;
-  color: #fff;
+  background: var(--panel);
+  color: var(--brand);
   padding: 9px 12px;
 }
 
 .bookmark-page {
   flex: 0 0 auto;
-  border: 1px solid #ffffff55;
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: #ffffff18;
-  color: #fff;
+  background: var(--panel);
+  color: var(--brand);
   padding: 9px 12px;
 }
 
@@ -738,7 +738,7 @@ header {
 .ai-modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 16px 0; }
 .ai-modes .ui-button { padding: 8px 4px; font-size: 12px; }
 .ai-modes .active { background: var(--brand); color: white; }
-.ai-context { border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--panel); padding: 12px; font: 22px/1.8 Amiri, serif; }
+.ai-context { border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--panel); padding: 12px; font: 22px/1.8 'Noto Naskh Arabic', Amiri, serif; }
 .ai-progress { color: var(--muted); font-size: 13px; }
 .ai-analyze { width: 100%; margin-top: 14px; }
 .ai-result { line-height: 1.6; }
@@ -891,7 +891,7 @@ output {
   background: #fffdf5;
   box-shadow: var(--shadow);
   padding: clamp(32px, 6vw, 78px);
-  font-family: var(--reader-font, Amiri), 'Noto Naskh Arabic', serif;
+  font-family: var(--reader-font, 'Noto Naskh Arabic'), 'Noto Naskh Arabic', Amiri, serif;
   font-size: var(--reader-font-size, 32px);
   line-height: var(--reader-line-height, 2.25);
   white-space: pre-wrap;
@@ -972,7 +972,7 @@ output {
   box-shadow: var(--shadow);
   color: var(--muted);
   padding: 10px 12px;
-  font: 18px/1.7 Amiri, serif;
+  font: 18px/1.7 'Noto Naskh Arabic', Amiri, serif;
   white-space: normal;
 }
 
@@ -1006,7 +1006,7 @@ output {
   border-radius: 50%;
   background: linear-gradient(145deg, var(--panel), var(--paper));
   color: var(--accent);
-  font: 700 28px/1 Amiri, serif;
+  font: 700 28px/1 'Noto Naskh Arabic', Amiri, serif;
 }
 
 .search-screen {
@@ -1126,7 +1126,7 @@ output {
 }
 
 .result-row b {
-  font: 700 18px/1.4 Amiri, serif;
+  font: 700 18px/1.4 'Noto Naskh Arabic', Amiri, serif;
 }
 
 .result-row small,
@@ -1141,7 +1141,7 @@ output {
 
 .result-row span {
   color: #45554d;
-  font: 18px/1.8 Amiri, serif;
+  font: 18px/1.8 'Noto Naskh Arabic', Amiri, serif;
 }
 
 .result-row mark {
@@ -1240,7 +1240,7 @@ output {
 }
 
 .annotation-dialog b {
-  font: 700 31px/1.4 Amiri, serif;
+  font: 700 31px/1.4 'Noto Naskh Arabic', Amiri, serif;
 }
 
 .word-context {
@@ -1253,7 +1253,7 @@ output {
   border-radius: var(--radius-md);
   background: #fff;
   padding: 12px;
-  font-family: Amiri, serif;
+  font-family: 'Noto Naskh Arabic', Amiri, serif;
 }
 
 .word-context strong {
@@ -1444,11 +1444,18 @@ output {
 
   .mainnav {
     width: 100%;
-    height: 38px;
+    height: 42px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
   }
 
+  .mainnav::-webkit-scrollbar { display: none; }
+
   .mainnav .ui-button {
-    flex: 1;
+    flex: 1 0 auto;
+    min-width: 76px;
+    padding-inline: 10px;
   }
 
   .reader-nav {
@@ -1924,13 +1931,13 @@ output {
 .home-intro p { color: var(--muted); font-size: 14px; line-height: 1.8; margin: 0; }
 .home-search { margin-top: 26px; max-width: 620px; }
 .home-search .text-field { padding: 15px 18px; background: var(--canvas); }
-.home-calligraphy { padding: 26px 12px; text-align: center; color: var(--brand); font: 42px/1.8 Amiri, serif; border-inline-start: 1px solid var(--line); }
+.home-calligraphy { padding: 26px 12px; text-align: center; color: var(--brand); font: 42px/1.8 'Noto Naskh Arabic', Amiri, serif; border-inline-start: 1px solid var(--line); }
 .home-calligraphy small { font-size: 28px; }
 .home-recent { margin-top: 28px; }
 .home-recent h2, .catalog-heading h2 { font-size: 19px; margin: 0; }
 .home-recent p, .catalog-heading p { color: var(--muted); font-size: 12px; line-height: 1.7; margin: 6px 0 0; }
 .home-recent .recent-strip { margin: 12px 0 0; padding: 0 0 6px; border: 0; border-radius: 0; background: transparent; }
-.home-recent .recent-strip .ui-button { background: var(--paper); padding: 12px 18px; font: 20px/1.5 Amiri, serif; }
+.home-recent .recent-strip .ui-button { background: var(--paper); padding: 12px 18px; font: 20px/1.5 'Noto Naskh Arabic', Amiri, serif; }
 .home-toolbar { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; border-bottom: 1px solid var(--line); }
 .home-tabs { display: flex; gap: 24px; }
 .home-tabs .ui-button { padding: 15px 0; border: 0; background: transparent; color: var(--muted); font-weight: 700; font-size: 13px; border-radius: 0; }
@@ -1941,7 +1948,7 @@ output {
 .home-layout .catalog-index { box-shadow: none; background: var(--paper); padding: 18px; }
 .home-layout .index-list { max-height: 280px; overflow: auto; }
 .home-layout .index-row { gap: 12px; }
-.home-layout .index-row span { font-family: Amiri, serif; font-size: 18px; overflow-wrap: anywhere; }
+.home-layout .index-row span { font-family: 'Noto Naskh Arabic', Amiri, serif; font-size: 18px; overflow-wrap: anywhere; }
 .home-layout .catalog { padding: 0; border: 0; background: transparent; box-shadow: none; min-width: 0; }
 .catalog-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }
 .catalog-heading > span { color: var(--muted); font-size: 12px; white-space: nowrap; }
@@ -1991,8 +1998,8 @@ output {
 .bookmark-results { display: grid; gap: 12px; }
 .bookmark-item { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: var(--radius-md); padding: 12px; }
 .bookmark-open { flex: 1; display: grid; min-width: 0; gap: 8px; text-align: start; background: transparent; border: 0; color: var(--ink); padding: 8px; }
-.bookmark-open b { font: 700 24px/1.6 Amiri, serif; overflow-wrap: anywhere; }
-.bookmark-open span { font: 18px/1.6 Amiri, serif; color: var(--muted); }
+.bookmark-open b { font: 700 24px/1.6 'Noto Naskh Arabic', Amiri, serif; overflow-wrap: anywhere; }
+.bookmark-open span { font: 18px/1.6 'Noto Naskh Arabic', Amiri, serif; color: var(--muted); }
 .bookmark-open small { color: var(--muted); }
 .bookmark-remove, .manage-bookmarks { border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--panel); color: var(--ink); padding: 10px 12px; }
 .bookmark-remove { color: var(--danger); }
