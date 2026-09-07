@@ -8,6 +8,7 @@ import type { Page } from './types'
 
 vi.mock('./api', () => ({
   api: { books: vi.fn(), categories: vi.fn(), authors: vi.fn(), page: vi.fn(), index: vi.fn(), parts: vi.fn(), bookmarks: vi.fn(), health: vi.fn(), suggestions: vi.fn(), save: vi.fn(), delete: vi.fn(), deleteBookmark: vi.fn() },
+  resolvePartPage: vi.fn(async (_book, part, localPage) => ({ page_id: part === 2 && localPage === 1 ? 250 : localPage })),
   aiStatus: vi.fn(async () => ({ enabled: false, provider: 'gemini', model: 'test' })),
   searchAdvanced: vi.fn(), exportBackup: vi.fn(), importBackup: vi.fn(), switchAIProvider: vi.fn(), toggleAI: vi.fn(),
 }))
@@ -56,6 +57,19 @@ it('ignores stale page and index responses after opening another book', async ()
   await act(async () => { resolveOld(page(1, 1)); resolveIndex([{ id: 1, parent: 0, page_id: 1, title: 'Bab lama' }]) })
   expect(host.querySelector('article')!.textContent).toBe('Isi 2/1')
   expect(host.textContent).not.toContain('Bab lama')
+})
+it('offers volume navigation directly above the page without opening the index', async () => {
+  vi.mocked(api.parts).mockResolvedValue([{ part: 1, page_id: 1 }, { part: 2, page_id: 250 }])
+  await act(async () => root.render(<App />)); await click('.book-card')
+  const select = host.querySelector('.reader-nav select') as HTMLSelectElement
+  expect(select.disabled).toBe(false)
+  await act(async () => {
+    select.value = '2'
+    select.dispatchEvent(new Event('change', { bubbles: true }))
+  })
+  expect(api.page).toHaveBeenLastCalledWith(1, 250)
+  expect(api.page).toHaveBeenCalledTimes(2)
+  expect(host.querySelector('.page-jump input')!.getAttribute('value')).toBe('250')
 })
 it('keeps search scope independent of a filtered catalog', async () => {
   vi.mocked(api.categories).mockResolvedValue([{ id: 1, name: 'Kategori', count: 1 }])

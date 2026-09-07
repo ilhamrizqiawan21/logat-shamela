@@ -1,5 +1,23 @@
 import type {Book,Bookmark,Chapter,Item,Page,Result,Token} from './types'
-const get=<T,>(url:string)=>fetch(url).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.detail||'Terjadi kesalahan');return d as T})
+// Bound requests so an unavailable server cannot leave the editor busy forever.
+const fetch: typeof globalThis.fetch = async (input, init) => {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30000)
+  try {
+    return await globalThis.fetch(input, { ...init, signal: controller.signal })
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('Server belum merespons setelah 30 detik. Draf tetap tersedia; coba lagi.')
+    throw error
+  } finally { clearTimeout(timeout) }
+}
+const get=<T,>(url:string)=>fetch(url).then(async r=>{
+  const body = await r.text()
+  let data: T & { detail?: string }
+  try { data = JSON.parse(body) as T & { detail?: string } }
+  catch { throw Error(r.ok ? 'Respons server tidak valid. Coba muat ulang aplikasi.' : `Endpoint belum tersedia (${r.status}). Restart server lalu coba lagi.`) }
+  if(!r.ok) throw Error(data.detail || 'Terjadi kesalahan')
+  return data as T
+})
 export const searchAdvanced=(terms:string[],operator:string,books:number[])=>get<{results:Result[]}>(`/api/search/advanced?operator=${operator}${terms.map(term=>`&terms=${encodeURIComponent(term)}`).join('')}${books.map(id=>`&book_ids=${id}`).join('')}`)
 export const aiStatus=()=>get<{enabled:boolean,provider:string,model:string}>('/api/ai/status')
 export const toggleAI=(enabled:boolean)=>fetch('/api/ai/toggle',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.detail||'Gagal mengubah AI');return d as {enabled:boolean,provider:string,model:string}})
@@ -8,4 +26,5 @@ export type LogatBackup={format:'logat-syamilah-backup',version:1,annotations:Re
 export const exportBackup=()=>get<LogatBackup>('/api/data/export')
 export const importBackup=(backup:LogatBackup)=>fetch('/api/data/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(backup)}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.detail||'Gagal memulihkan backup');return d as {ok:boolean}})
 const annotationBody=(book:number,page:number,t:Token,meaning='')=>JSON.stringify({book_id:book,page_id:page,word_index:t.index,word:t.text,meaning,normalized_word:t.normalized,prev_word:t.prev_word,next_word:t.next_word})
+export const resolvePartPage=(book:number,part:number,page:number)=>get<{page_id:number}>(`/api/page/resolve?book_id=${book}&part=${part}&page=${page}`)
 export const api={deleteBookmark:(book:number,page:number)=>fetch('/api/bookmark',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({book_id:book,page_id:page})}).then(async r=>{if(!r.ok){const data=await r.json();throw Error(data.detail||'Gagal menghapus bookmark')}}),health:()=>get<{ok:boolean}>('/api/health'),books:(q='',category?:number,author?:number)=>get<Book[]>(`/api/books?q=${encodeURIComponent(q)}${category?`&category=${category}`:''}${author?`&author=${author}`:''}`),book:(id:number)=>get<Book>(`/api/books/${id}`),categories:(q='')=>get<Item[]>(`/api/categories?q=${encodeURIComponent(q)}`),authors:(q='')=>get<Item[]>(`/api/authors?q=${encodeURIComponent(q)}`),page:(book:number,page:number)=>get<Page>(`/api/page?book_id=${book}&page_id=${page}`),index:(book:number)=>get<Chapter[]>(`/api/index?book_id=${book}`),parts:(book:number)=>get<{part:number,page_id:number}[]>(`/api/parts?book_id=${book}`),bookmarks:()=>get<Bookmark[]>('/api/bookmarks'),suggestions:(normalized:string)=>get<{suggestions:string[]}>(`/api/suggestions?normalized_word=${encodeURIComponent(normalized)}`),toggleBookmark:(book:number,page:number)=>fetch('/api/bookmark',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({book_id:book,page_id:page})}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.detail||'Gagal mengubah bookmark');return d as {bookmarked:boolean}}),search:(q:string,books:number[])=>get<{results:Result[]}>(`/api/search?q=${encodeURIComponent(q)}${books.map(id=>`&book_ids=${id}`).join('')}`),save:(book:number,page:number,t:Token,meaning:string)=>fetch('/api/annotation',{method:'PUT',headers:{'Content-Type':'application/json'},body:annotationBody(book,page,t,meaning)}).then(r=>{if(!r.ok)throw Error('Gagal menyimpan logat')}),delete:(book:number,page:number,t:Token)=>fetch('/api/annotation',{method:'DELETE',headers:{'Content-Type':'application/json'},body:annotationBody(book,page,t)}).then(r=>{if(!r.ok)throw Error('Gagal menghapus logat')})}

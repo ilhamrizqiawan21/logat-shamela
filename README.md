@@ -19,7 +19,7 @@ Server hanya mendengarkan `127.0.0.1:8765`; data Maktabah Syamilah tetap dibaca 
 
 Logat dan bookmark disimpan lokal per-device di `~/.local/share/logat-syamilah/logat.db`. Dari menu **Pengaturan**, gunakan **Unduh backup logat** untuk membuat file JSON, lalu **Pulihkan backup** hanya pada device yang dipilih. Tidak ada sinkronisasi otomatis antar-device; restore mengganti logat dan bookmark lokal setelah konfirmasi.
 
-Asisten AI dapat memakai Ollama secara lokal tanpa billing API. Default lokal adalah `qwen2.5:7b`. Pastikan nama pada `OLLAMA_MODEL` sama persis dengan model yang tersedia di `ollama list`. Jika ingin mengganti model, atur `OLLAMA_MODEL` dan pastikan model tersebut sudah tersedia. OpenAI API tetap dapat dipakai dengan `AI_PROVIDER=openai` dan `OPENAI_API_KEY`.
+Asisten AI dapat memakai Ollama secara lokal tanpa billing API. Default lokal adalah `qwen3:8b`. Pastikan nama pada `OLLAMA_MODEL` sama persis dengan model yang tersedia di `ollama list`. Jika ingin mengganti model, atur `OLLAMA_MODEL` dan pastikan model tersebut sudah tersedia. OpenAI API tetap dapat dipakai dengan `AI_PROVIDER=openai` dan `OPENAI_API_KEY`.
 
 Untuk Gemini, gunakan `.env` di folder utama proyek. Isi `GEMINI_API_KEY` dan pastikan `AI_PROVIDER=gemini`, lalu mulai ulang `./run-logat.sh`. Model default adalah `gemini-3.5-flash-lite`. `GEMINI_TIMEOUT` mengatur batas waktu permintaan (default 45 detik), dan `GEMINI_MAX_OUTPUT_TOKENS` membatasi panjang keluaran (default 500). Key kosong menghasilkan pesan konfigurasi tanpa mengirim permintaan ke Gemini. `.env` diabaikan Git; jangan memasukkan key ke variabel `VITE_` karena variabel tersebut masuk frontend.
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { aiStatus, api, exportBackup, importBackup, searchAdvanced, switchAIProvider, toggleAI } from './api'
+import { aiStatus, api, exportBackup, importBackup, resolvePartPage, searchAdvanced, switchAIProvider, toggleAI } from './api'
 import { AnnotationEditor } from './components/AnnotationEditor'
 import { AITutorPanel } from './components/AITutorPanel'
 import { BookCatalog } from './components/BookCatalog'
@@ -69,7 +69,6 @@ export function App() {
   const [selectedAuthor, setSelectedAuthor] = useState<number>()
   const [book, setBook] = useState<Book>()
   const [pageNo, setPageNo] = useState(1)
-  const [readerVersion, setReaderVersion] = useState(0)
   const [page, setPage] = useState<Page>()
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [parts, setParts] = useState<Part[]>([])
@@ -129,6 +128,7 @@ export function App() {
 
   const openBook = (nextBook: Book, requestedPage?: number) => {
     const nextPage = Math.max(1, Number.isSafeInteger(requestedPage) ? requestedPage! : readingPages[nextBook.id] || 1)
+    const reloadSamePage = book?.id === nextBook.id && pageNo === nextPage
     pageRequest.current++
     navigationRequest.current++
     const request = ++indexRequest.current
@@ -139,10 +139,10 @@ export function App() {
     setChapterQuery('')
     setReaderStatus('loading')
     setReaderError('')
-    setReaderVersion(current => current + 1)
     setBook(nextBook)
     setPageNo(nextPage)
     setView('reader')
+    if (reloadSamePage) loadPage(nextBook, nextPage)
     window.history.replaceState(null, '', `/?book=${nextBook.id}&page=${nextPage}`)
     setRecentBooks(current => [nextBook, ...current.filter(item => item.id !== nextBook.id)].slice(0, 6))
     Promise.all([api.index(nextBook.id), api.parts(nextBook.id)])
@@ -203,6 +203,13 @@ export function App() {
     setPageNo(safePage)
     if (book) window.history.replaceState(null, '', `/?book=${book.id}&page=${safePage}`)
   }
+  const goToPartPage = async (part: number, localPage: number) => {
+    if (!book || !Number.isSafeInteger(localPage) || localPage < 1) return
+    try {
+      const resolved = await resolvePartPage(book.id, part, localPage)
+      if (book) goToPage(resolved.page_id)
+    } catch (error) { setToast(errorMessage(error)) }
+  }
 
   const draftKey = (token: Token) => `logat:draft:${book?.id}:${pageNo}:${token.index}`
   const updateMeaning = (value: string) => {
@@ -246,7 +253,8 @@ export function App() {
     const context = navigationRequest.current
     try {
       await api.save(book.id, pageNo, selectedToken, meaning)
-      const updated = await api.page(book.id, pageNo)
+      if (!page) return
+      const updated = { ...page, annotations: { ...page.annotations, [String(selectedToken.index)]: { word: selectedToken.text, meaning } } }
       if (context !== navigationRequest.current) return
       clearDraft(selectedToken)
       setPage(updated)
@@ -261,7 +269,10 @@ export function App() {
     const context = navigationRequest.current
     try {
       await api.delete(book.id, pageNo, selectedToken)
-      const updated = await api.page(book.id, pageNo)
+      if (!page) return
+      const annotations = { ...page.annotations }
+      delete annotations[String(selectedToken.index)]
+      const updated = { ...page, annotations }
       if (context !== navigationRequest.current) return
       clearDraft(selectedToken)
       setPage(updated)
@@ -356,7 +367,7 @@ export function App() {
   useEffect(() => {
     if (!book) return
     loadPage(book, pageNo)
-  }, [book, pageNo, readerVersion])
+  }, [book, pageNo])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -482,6 +493,7 @@ export function App() {
           onChapterQuery={setChapterQuery}
           onChooseBook={() => setView('books')}
           onPage={goToPage}
+          onPartPage={goToPartPage}
           onRetry={() => book && loadPage(book, pageNo)}
           onFocusMode={setFocusMode}
           onToggleBookmark={togglePageBookmark}

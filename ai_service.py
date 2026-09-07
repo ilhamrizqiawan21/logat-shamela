@@ -20,8 +20,8 @@ if ENV_FILE.is_file():
 
 MODES = {"language", "nahwu", "shorof", "munasabah"}
 MAX_TEXT = 6000
-OLLAMA_DEFAULT_TIMEOUT = 90
-OLLAMA_DEFAULT_STARTUP_TIMEOUT = 15
+OLLAMA_DEFAULT_TIMEOUT = 120
+OLLAMA_DEFAULT_STARTUP_TIMEOUT = 20
 
 
 class AIUnavailable(RuntimeError):
@@ -47,7 +47,7 @@ class AIService:
             self.model = self.model or os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
             return
         if self.provider == "ollama":
-            self.model = self.model or os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
+            self.model = self.model or os.environ.get("OLLAMA_MODEL", "qwen3:8b")
             return
         self.model = self.model or os.environ.get("OPENAI_MODEL", "gpt-5-mini")
         if self.client is None and os.environ.get("OPENAI_API_KEY"):
@@ -122,13 +122,13 @@ class AIService:
             raise ValueError("Provider AI tidak valid")
         with self._state_lock:
             if provider == "ollama":
-                target_model = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
+                target_model = self._current_env("OLLAMA_MODEL") or "qwen3:8b"
                 self._ensure_ollama(target_model)
                 self.provider = "ollama"
                 self.model = target_model
             else:
                 self.provider = "gemini"
-                self.model = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
+                self.model = self._current_env("GEMINI_MODEL") or "gemini-3.5-flash-lite"
             return self.status()
 
     @staticmethod
@@ -139,7 +139,7 @@ class AIService:
             return default
 
     def _gemini(self, system: str, user_payload: str, mode: str, source: dict) -> dict:
-        key = os.environ.get("GEMINI_API_KEY", "").strip()
+        key = self._current_env("GEMINI_API_KEY")
         if not key:
             raise AIUnavailable("GEMINI_API_KEY belum diisi. Isi .env lalu mulai ulang aplikasi.")
         endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
@@ -155,6 +155,20 @@ class AIService:
             raise AIUnavailable("Gemini AI tidak tersedia atau gagal memproses permintaan") from exc
         return {"mode": mode, "answer": str(parsed.get("answer", "")), "sections": parsed.get("sections", []), "source": source,
                 "disclaimer": "Analisis Gemini adalah bantuan belajar; verifikasi kembali dengan syarah atau guru."}
+
+    @staticmethod
+    def _current_env(name: str) -> str:
+        """Read a newly edited .env value without exposing it to the frontend."""
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+        if ENV_FILE.is_file():
+            for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+                if line.strip() and not line.lstrip().startswith("#") and "=" in line:
+                    key, file_value = line.split("=", 1)
+                    if key.strip() == name:
+                        return file_value.strip().strip('"\'')
+        return ""
 
     def _ollama(self, system: str, user_payload: str, mode: str, source: dict) -> dict:
         endpoint = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/") + "/api/chat"

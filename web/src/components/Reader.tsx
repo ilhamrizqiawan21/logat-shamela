@@ -52,6 +52,7 @@ function flattenVisible(nodes: TreeChapter[], collapsed: Set<number>, level = 0)
 
 function ReaderIndex({ chapters, parts, bookmarks, chapterQuery, currentPage, isOpen = false, onClose, onChapterQuery, onPage, onOpenBookmark, onManageBookmarks }: ReaderIndexProps) {
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set())
+  const [pageInput, setPageInput] = useState(String(currentPage))
   const tree = useMemo(() => buildChapterTree(chapters), [chapters])
   const activeChapterId = useMemo(() => {
     return [...chapters].reverse().find(chapter => chapter.page_id <= currentPage)?.id
@@ -62,6 +63,8 @@ function ReaderIndex({ chapters, parts, bookmarks, chapterQuery, currentPage, is
   }, [chapters, chapterQuery, tree, collapsed])
 
   const activePart = useMemo(() => [...parts].reverse().find(part => part.page_id <= currentPage)?.part, [parts, currentPage])
+
+  useEffect(() => setPageInput(String(currentPage)), [currentPage])
 
   const jump = (page: number) => {
     onPage(page)
@@ -88,13 +91,33 @@ function ReaderIndex({ chapters, parts, bookmarks, chapterQuery, currentPage, is
       </div>
 
       <h3>Juz / Jilid</h3>
-      <div className="part-list" role="list" aria-label="Juz atau jilid">
+      <div className="reader-jump">
+        <label className="field-label">
+          <span>Pilih juz / jilid</span>
+          <select aria-label="Pilih juz atau jilid" value={activePart ?? ''} onChange={event => {
+            const part = parts.find(item => item.part === Number(event.target.value))
+            if (part) jump(part.page_id)
+          }}>
+            <option value="" disabled>Pilih bagian</option>
+            {parts.map(part => <option key={part.part} value={part.part}>Juz / Jilid {part.part}</option>)}
+          </select>
+        </label>
+        <form className="reader-page-jump" onSubmit={event => {
+          event.preventDefault()
+          const target = Number(pageInput)
+          if (Number.isSafeInteger(target) && target >= 1) jump(target)
+        }}>
+          <label className="field-label">
+            <span>Nomor halaman</span>
+            <TextField aria-label="Nomor halaman tujuan" type="number" min={1} step={1} value={pageInput} onChange={event => setPageInput(event.target.value)} />
+          </label>
+          <Button type="submit">Buka</Button>
+        </form>
+      </div>
+
+      <div className="part-list" role="list" aria-label="Juz atau jilid cepat">
         {parts.map(part => (
-          <Button
-            key={part.part}
-            className={part.part === activePart ? 'active' : ''}
-            onClick={() => jump(part.page_id)}
-          >
+          <Button key={part.part} className={part.part === activePart ? 'active' : ''} onClick={() => jump(part.page_id)}>
             {part.part}
           </Button>
         ))}
@@ -157,6 +180,7 @@ type Props = {
   onChapterQuery: (value: string) => void
   onChooseBook: () => void
   onPage: (page: number) => void
+  onPartPage: (part: number, page: number) => void
   onRetry: () => void
   onFocusMode: (value: boolean) => void
   onToggleBookmark: () => void
@@ -167,11 +191,11 @@ type Props = {
   onEditToken: (token: Token) => void
 }
 
-export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapterQuery, status, error, focusMode, prefs, onPrefs, onChapterQuery, onChooseBook, onPage, onRetry, onFocusMode, onToggleBookmark, onAskAI, aiEnabled, onOpenBookmark, onManageBookmarks, onEditToken }: Props) {
+export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapterQuery, status, error, focusMode, prefs, onPrefs, onChapterQuery, onChooseBook, onPage, onPartPage, onRetry, onFocusMode, onToggleBookmark, onAskAI, aiEnabled, onOpenBookmark, onManageBookmarks, onEditToken }: Props) {
   const [indexOpen, setIndexOpen] = useState(false)
   const [activeWord, setActiveWord] = useState(0)
   const [pageInput, setPageInput] = useState(String(pageNo))
-  useEffect(() => setPageInput(String(pageNo)), [book?.id, pageNo])
+  useEffect(() => setPageInput(String(page?.printed_page ?? page?.part_page ?? pageNo)), [book?.id, page?.page_id, page?.printed_page, page?.part_page, pageNo])
   const readerTop = useRef<HTMLElement>(null)
   const indexReturnFocus = useRef<HTMLElement | null>(null)
 
@@ -291,23 +315,41 @@ export function Reader({ book, page, pageNo, bookmarks, chapters, parts, chapter
             <Button disabled={status !== 'idle' || !page} className={`bookmark-page ${page?.bookmarked ? 'active' : ''}`} onClick={onToggleBookmark} aria-label={page?.bookmarked ? 'Hapus bookmark halaman' : 'Bookmark halaman'}>
               {page?.bookmarked ? '★ Bookmark' : '☆ Bookmark'}
             </Button>
-            <Button disabled={status !== 'idle' || !page || !aiEnabled} title={aiEnabled ? 'Buka asisten AI' : 'Aktifkan AI di Pengaturan'} className="ai-trigger" onClick={onAskAI}>{aiEnabled ? 'Asisten AI' : 'AI nonaktif'}</Button>
             <Button className="focus-toggle" onClick={() => onFocusMode(!focusMode)}>{focusMode ? 'Tampilkan panel' : 'Mode fokus'}</Button>
           </div>
         </div>
 
         <nav className="reader-nav" aria-label="Navigasi halaman">
+          <label className="field-label reader-volume-picker">
+            <span>Juz / Jilid</span>
+            <select aria-label="Juz atau jilid tujuan" disabled={status === 'loading' || !parts.length} value={page?.part ?? ''} onChange={event => {
+              const target = parts.find(part => String(part.part) === event.target.value)
+              if (target) onPartPage(target.part, 1)
+            }}>
+              <option value="" disabled>{parts.length ? 'Pilih jilid' : 'Jilid belum tersedia'}</option>
+              {parts.map(part => <option key={part.part} value={part.part}>Jilid {part.part}</option>)}
+            </select>
+          </label>
           <Button disabled={status === 'loading' || pageNo <= 1} onClick={() => onPage(Math.max(1, pageNo - 1))}>← Sebelumnya</Button>
-          <form className="page-jump" onSubmit={event => { event.preventDefault(); const target = Number(pageInput); if (Number.isSafeInteger(target) && target >= 1) onPage(target) }}>
-            <TextField aria-label="Nomor halaman" required value={pageInput} type="number" min={1} step={1} onChange={event => setPageInput(event.target.value)} />
+          <form className="page-jump" onSubmit={event => { event.preventDefault(); const target = Number(pageInput); if (Number.isSafeInteger(target) && target >= 1 && page?.part) onPartPage(page.part, target) }}>
+            <label className="field-label">
+            <span>Halaman jilid</span>
+            <TextField aria-label="Nomor halaman dalam jilid" required value={pageInput} type="number" min={1} step={1} onChange={event => setPageInput(event.target.value)} />
+            </label>
             <Button type="submit" disabled={status === 'loading'}>Buka</Button>
           </form>
           <Button disabled={status === 'loading'} onClick={() => onPage(pageNo + 1)}>Berikutnya →</Button>
         </nav>
 
-        <details className="reader-appearance">
-          <summary>Tampilan bacaan</summary>
-          <ReaderAppearance prefs={prefs} onPrefs={onPrefs} />
+        <details className="reader-tools">
+          <summary>Alat baca</summary>
+          <div className="reader-tools-body">
+            <Button disabled={status !== 'idle' || !page || !aiEnabled} title={aiEnabled ? 'Buka asisten AI' : 'Aktifkan AI di Pengaturan'} className="ai-trigger" onClick={onAskAI}>{aiEnabled ? 'Buka asisten AI' : 'AI nonaktif · aktifkan di Pengaturan'}</Button>
+            <details className="reader-appearance">
+              <summary>Tampilan bacaan</summary>
+              <ReaderAppearance prefs={prefs} onPrefs={onPrefs} />
+            </details>
+          </div>
         </details>
 
         <p className="meta">Jilid {page?.part ?? '-'} · Halaman cetak {page?.printed_page ?? '-'}</p>

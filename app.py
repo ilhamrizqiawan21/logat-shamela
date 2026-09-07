@@ -81,7 +81,8 @@ class ReaderService:
         page = self.reader.page(book_id, page_id)
         book = self.book(book_id)
         if not book: raise LookupError("Kitab tidak ditemukan")
-        return {"book_id": book_id, "page_id": page_id, "part": page["part"], "printed_page": page["printed_page"],
+        part_page = page["printed_page"]
+        return {"book_id": book_id, "page_id": page_id, "part": page["part"], "part_page": part_page, "printed_page": page["printed_page"],
                 "tokens": [token.__dict__ for token in page["tokens"]],
                 "annotations": {str(k): v for k, v in self.store.annotations(book_id, page_id).items()},
                 "book_name": book["name"], "authors": book["authors"],
@@ -108,10 +109,17 @@ class ReaderService:
         uri = f"file:{self.root / 'database/book' / str(book_id)[-3:] / (str(book_id) + '.db')}?mode=ro"
         try:
             with sqlite3.connect(uri, uri=True) as db:
-                rows = db.execute("SELECT part, MIN(id) FROM page WHERE part IS NOT NULL GROUP BY part ORDER BY part").fetchall()
-            return [{"part": r[0], "page_id": r[1]} for r in rows]
+                rows = db.execute("SELECT part, MIN(id), COUNT(*) FROM page WHERE part IS NOT NULL GROUP BY part ORDER BY part").fetchall()
+            return [{"part": r[0], "page_id": r[1], "page_count": r[2]} for r in rows]
         except sqlite3.Error:
             return []
+
+    def resolve_part_page(self, book_id: int, part: int, page: int):
+        uri = f"file:{self.root / 'database/book' / str(book_id)[-3:] / (str(book_id)+'.db')}?mode=ro"
+        with sqlite3.connect(uri, uri=True) as db:
+                row = db.execute("SELECT id FROM page WHERE part=? AND page=? ORDER BY id LIMIT 1", (str(part), page)).fetchone()
+        if not row: raise LookupError("Halaman jilid tidak ditemukan")
+        return row[0]
 
     def search(self, query: str, book_ids: list[int], offset: int = 0):
         if not query.strip(): return {"query": query, "total_hits": 0, "results": []}
@@ -189,6 +197,11 @@ def create_app(service: ReaderService | None = None, ai_service: AIService | Non
 
     @api.get("/api/parts")
     def parts(book_id: int): return svc().parts(book_id)
+
+    @api.get("/api/page/resolve")
+    def resolve_page(book_id: int, part: int, page: int = Query(..., ge=1)):
+        try: return {"page_id": svc().resolve_part_page(book_id, part, page)}
+        except LookupError as exc: raise HTTPException(404, str(exc)) from exc
 
     @api.get("/api/bookmarks")
     def bookmarks(): return svc().bookmarks()
