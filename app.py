@@ -254,10 +254,44 @@ def create_app(service: ReaderService | None = None, ai_service: AIService | Non
 
     @api.put("/api/annotation")
     def save_annotation(data: AnnotationInput):
-        svc().store.save(data.book_id, data.page_id,
-                         Token(data.word, True, data.word_index, normalized=data.normalized_word,
-                               prev_word=data.prev_word, next_word=data.next_word), data.meaning)
+        try:
+            page = svc().reader.page(data.book_id, data.page_id)
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(
+                503,
+                "Mesin pembaca sedang tidak tersedia"
+            ) from exc
+
+        token = next(
+            (
+                token
+                for token in page["tokens"]
+                if token.is_word and token.index == data.word_index
+            ),
+            None,
+        )
+
+        if token is None:
+            raise HTTPException(
+                404,
+                "Kata tidak ditemukan pada halaman"
+            )
+        if data.word and token.text != data.word:
+            raise HTTPException(
+                409,
+                "Data tidak sesuai dengan halaman saat ini"
+            )
+
+        svc().store.save(
+            data.book_id,
+            data.page_id,
+            token,
+            data.meaning,
+        )
         return {"ok": True}
+        
 
     @api.delete("/api/annotation")
     def delete_annotation(data: AnnotationInput):
