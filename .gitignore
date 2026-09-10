@@ -6,6 +6,7 @@ __pycache__/
 .coverage
 htmlcov/
 .venv/
+.venv-wsl/
 venv/
 env/
 
@@ -22,7 +23,11 @@ backups/
 
 # Build artifacts
 dist/
+build/
+backend-dist/
 packaging/debian/
+packaging/*.spec
+desktop/dist-windows/
 
 # Local configuration and editor/OS files
 .env

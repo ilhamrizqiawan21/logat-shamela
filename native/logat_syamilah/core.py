@@ -148,6 +148,8 @@ def parse_and_tokenize(body: str, foot: str = "") -> list[Token]:
 
 def discover_install_root(explicit: str | None = None) -> Path:
     candidates = [explicit, os.environ.get("SHAMELA_INSTALL_ROOT"),
+                  str(Path(__file__).resolve().parents[3]),
+                  "C:/shamela" if os.name == "nt" else "/mnt/c/shamela",
                   str(Path.home() / "Documents/shamela"), str(Path.home() / "shamela")]
     for candidate in filter(None, candidates):
         root = Path(candidate).expanduser().resolve()
@@ -315,13 +317,28 @@ class ShamelaReader:
         self.root = install_root
         self.catalog = CatalogRepository(install_root / "database/master.db")
         java = install_root / "app/linux/64/jre/2/bin/java"
+        windows_java = install_root / "app/win/64/jre/2/bin/java.exe"
+        if os.name == "nt" or (not java.is_file() and shutil.which("wslpath") and windows_java.is_file()):
+            java = windows_java
+        if not java.is_file():
+            raise FileNotFoundError(f"Java bawaan Syamilah tidak ditemukan: {java}")
+        def java_path(value: Path) -> str:
+            if java.suffix == ".exe" and os.name != "nt":
+                return subprocess.check_output(["wslpath", "-w", str(value.resolve())], text=True).strip()
+            return str(value)
         jars = sorted((install_root / "app/lucene/2").glob("*.jar"))
-        cp = os.pathsep.join(map(str, [*jars, helper_jar]))
+        cp = (";" if java.suffix == ".exe" else os.pathsep).join(map(java_path, [*jars, helper_jar]))
         self.proc = subprocess.Popen([str(java), "--enable-native-access=ALL-UNNAMED",
-            "--add-modules=jdk.incubator.vector", "-cp", cp, "ws.shamela.mcp.Main", str(install_root)],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", bufsize=1)
+            "--add-modules=jdk.incubator.vector", "-cp", cp, "ws.shamela.mcp.Main", java_path(install_root)],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", bufsize=1,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
         self.lock = threading.Lock()
-        ready = json.loads(self.proc.stdout.readline())
+        line = self.proc.stdout.readline()
+        if not line:
+            details = self.proc.stderr.read()
+            self.close()
+            raise RuntimeError(f"Mesin Lucene Syamilah gagal dimulai: {details.strip()}")
+        ready = json.loads(line)
         if not ready.get("ok"):
             raise RuntimeError("Mesin Lucene Syamilah gagal dimulai")
 

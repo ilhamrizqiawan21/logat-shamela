@@ -62,3 +62,23 @@ Catatan native disimpan di `~/.local/share/logat-syamilah/logat.db`. Pada penggu
 Pintasan: `Ctrl+F` mencari kitab, `Ctrl+S` menyimpan logat, panah kiri/kanan berpindah halaman, dan `Esc` menutup editor.
 
 Kode pembaca Lucene menggunakan helper MIT dari proyek `alhoqbani/shamela-mcp`; lihat `vendor/LICENSE` dan sumber: https://github.com/alhoqbani/shamela-mcp
+
+## Package web dan EXE Windows
+
+Folder `web/` adalah package frontend React/TypeScript. Folder `desktop/` adalah package desktop yang memakai build frontend yang sama dan menjalankan backend FastAPI lokal, sehingga anotasi dan bookmark tetap kompatibel.
+
+```powershell
+cd desktop
+npm install
+npm run dev
+```
+
+Untuk membuat installer Windows, install PyInstaller pada virtual environment lalu jalankan dari root proyek:
+
+```powershell
+pyinstaller --distpath backend-dist packaging/logat-server.spec
+cd desktop
+npm run dist
+```
+
+Hasil installer dan portable `.exe` berada di `desktop/dist/`. Jika Syamilah tidak terdeteksi otomatis, atur `SHAMELA_INSTALL_ROOT` sebelum menjalankan aplikasi.

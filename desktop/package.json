@@ -1,0 +1,32 @@
+{
+  "name": "logat-syamilah-desktop",
+  "version": "0.3.0",
+  "private": true,
+  "engines": { "node": ">=20.19.0", "npm": ">=10.0.0" },
+  "description": "Desktop shell for Logat Syamilah",
+  "main": "main.cjs",
+  "scripts": {
+    "dev": "npm run build:web && electron .",
+    "build:web": "npm --prefix ../web run build",
+    "dist": "npm run build:web && electron-builder --win nsis portable",
+    "dist:dir": "npm run build:web && electron-builder --win dir"
+  },
+  "devDependencies": {
+    "electron": "^44.3.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "id.logat.syamilah",
+    "productName": "Logat Syamilah",
+    "asar": true,
+    "files": ["main.cjs", "preload.cjs"],
+    "extraResources": [
+      { "from": "../web/dist", "to": "web/dist" },
+      { "from": "../vendor", "to": "vendor" },
+      { "from": "../backend-dist", "to": "backend" }
+    ],
+    "win": { "target": ["nsis", "portable"] },
+    "portable": { "artifactName": "Logat-Syamilah-${version}-${arch}-portable.${ext}" },
+    "nsis": { "artifactName": "Logat-Syamilah-${version}-${arch}-setup.${ext}", "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true }
+  }
+}

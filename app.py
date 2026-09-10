@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sqlite3
+import sys
 import threading
 import webbrowser
 from contextlib import asynccontextmanager
@@ -18,7 +20,10 @@ from ai_service import AIService, AIRateLimited, AIUnavailable
 from logat_syamilah.core import LogatStore, ShamelaReader, Token, discover_install_root, parse_and_tokenize, user_data_dir
 
 APP_DIR = Path(__file__).resolve().parent
-DIST_DIR = APP_DIR / "web" / "dist"
+# PyInstaller extracts bundled resources beside the executable. Keeping this
+# lookup in one place makes the same server work from source and from .exe.
+RESOURCE_DIR = Path(os.environ.get("LOGAT_SYAMILAH_RESOURCE_DIR", getattr(sys, "_MEIPASS", APP_DIR)))
+DIST_DIR = RESOURCE_DIR / "web" / "dist"
 
 
 def tokenize(text: str) -> list[dict]:
@@ -63,7 +68,8 @@ class AIProviderInput(BaseModel):
 class ReaderService:
     def __init__(self, root: Path | None = None, data_dir: Path | None = None):
         self.root = root or discover_install_root()
-        self.reader = ShamelaReader(self.root, APP_DIR / "vendor" / "shamela-helper.jar")
+        helper = RESOURCE_DIR / "vendor" / "shamela-helper.jar"
+        self.reader = ShamelaReader(self.root, helper)
         self.store = LogatStore(data_dir / "logat.db" if data_dir else user_data_dir() / "logat.db",
                                 self.root / "logat" / "logat.db")
 
